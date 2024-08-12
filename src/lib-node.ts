@@ -13,7 +13,7 @@ export const createElement =
   <
     ElementType extends keyof HTMLElementTagNameMap,
     Element extends HTMLElementTagNameMap[ElementType],
-    Tags extends Partial<Record<keyof Element, "event" | "value">>
+    Tags extends Partial<Record<keyof Element, "event" | "value">>,
   >(
     elementType: ElementType,
     tagTypes: Tags
@@ -113,34 +113,3 @@ export const renderToString = ({ elementType, tagValues, children }: SubscribeEl
     .map(({ element, id }) => renderToString(element, id))
     .join("")}${close}`;
 };
-
-export type ArrayAction =
-  | {
-      type: "insert";
-      index: number;
-      element: SubscribeElement;
-    }
-  | {
-      type: "replace";
-      index: number;
-      element: SubscribeElement;
-    }
-  | {
-      type: "append";
-      element: SubscribeElement;
-    }
-  | {
-      type: "prepend";
-      element: SubscribeElement;
-    }
-  | {
-      type: "delete";
-      index: number;
-    };
-export const array = (actions: Observable<ArrayAction>): SubscribeElement => ({
-  children: [],
-  elementType: "a",
-  tagEventCallbacks: {},
-  tagValues: {},
-  idCallback: () => {},
-});
