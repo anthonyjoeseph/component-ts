@@ -4,7 +4,7 @@ module.exports = {
     es2021: true,
   },
   extends: ["plugin:@typescript-eslint/recommended", "plugin:prettier/recommended"],
-  ignorePatterns: ["workspaces/cli/index.js", "workspaces/slackbot/dist/**/*.js"],
+  ignorePatterns: ["workspaces/cli/index.js", "workspaces/slackbot/dist/**/*.js", "**/*.md"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 12,
