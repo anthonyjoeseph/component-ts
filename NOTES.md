@@ -1,6 +1,9 @@
 setAttribute?
 compareDocumentPosition?
 
+[immutable-assign](https://github.com/engineforce/ImmutableAssign)
+[baobab](https://github.com/Yomguithereal/baobab)
+
 [What forces layout](https://gist.github.com/paulirish/5d52fb081b3570c81e3a)
 
 [parcel code splitting](https://parceljs.org/features/code-splitting/)
