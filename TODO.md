@@ -1,6 +1,7 @@
 NOTE: Save examples in directory of their own - will use as a form of docs
 
-1. integrate w/ Parcel
+1. integrate w/ Parcel - npm scripts "dev" and "build"
+   1. `"dev": "concurrently --kill-others \"npm run start-watch\" \"npm run wp-server\""`
 1. button "increment counter" example
 1. hydrate should return observable of all changes, ever
 1. observableState where you can "listen" to a path
