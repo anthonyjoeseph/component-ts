@@ -1,11 +1,12 @@
 {
-  "name": "html-elements",
+  "name": "component-ts",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "parcel src/index.html",
-    "node": "ts-node src/index.ts"
+    "node": "nodemon src/index-node.ts",
+    "browser": "parcel src/index.html",
+    "dev": "concurrently --kill-others \"npm run node\" \"npm run browser\""
   },
   "author": "",
   "license": "ISC",
@@ -16,11 +17,13 @@
   },
   "devDependencies": {
     "@types/lodash": "^4.14.191",
+    "concurrently": "^8.2.2",
     "eslint": "^8.6.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-unused-imports": "^2.0.0",
+    "nodemon": "^3.1.4",
     "parcel-bundler": "^1.12.5",
     "ts-node": "^10.9.1",
     "typescript": "^5.1.3"

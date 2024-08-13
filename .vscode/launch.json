@@ -23,6 +23,16 @@
         "<node_internals>/**",
         "node_modules/**"
       ]
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Debug Browser",
+      "url": "http://localhost:1234",
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMapPathOverrides": {
+        "/__parcel_source_root/*": "${webRoot}/*"
+      }
     }
   ]
 }
