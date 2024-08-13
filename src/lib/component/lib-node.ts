@@ -1,55 +1,48 @@
 import { Observable, type Subscription } from "rxjs";
 import { groupBy, sortBy } from "lodash";
 
-export type SubscribeElement = {
+export type Component = {
   elementType: keyof HTMLElementTagNameMap;
   tagEventCallbacks: Record<string, (...args: unknown[]) => void>;
   tagValues: Record<string, { default: unknown; latest?: Observable<unknown> }>;
-  children: SubscribeElement[];
+  children: Component[];
   idCallback: (id: string) => void;
 };
 
-export const createElement =
-  <
-    ElementType extends keyof HTMLElementTagNameMap,
-    Element extends HTMLElementTagNameMap[ElementType],
-    Tags extends Partial<Record<keyof Element, "event" | "value">>,
-  >(
-    elementType: ElementType,
-    tagTypes: Tags
-  ) =>
-  (
-    tagValues: {
-      [K in keyof Tags]: K extends keyof Element
-        ? Tags[K] extends "event"
-          ? Element[K]
-          : { default: Element[K]; latest?: Observable<Element[K]> }
-        : never;
-    },
-    children: SubscribeElement[] = [],
-    idCallback: (id: string) => void = () => {}
-  ): SubscribeElement => {
-    const castTagTypes = tagTypes as Record<string, "event" | "value">;
-    const castTagValues = tagValues as Record<
-      string,
-      { default: unknown; latest?: Observable<unknown> } | ((...args: unknown[]) => void)
-    >;
-    return {
-      elementType,
-      tagEventCallbacks: Object.fromEntries(
-        Object.entries(castTagTypes)
-          .filter(([, type]) => type === "event")
-          .map(([tag]) => [tag, castTagValues[tag] as (...args: unknown[]) => void])
-      ),
-      tagValues: Object.fromEntries(
-        Object.entries(castTagTypes)
-          .filter(([, type]) => type === "value")
-          .map(([tag]) => [tag, castTagValues[tag] as { default: unknown; latest?: Observable<unknown> }])
-      ),
-      children,
-      idCallback,
-    };
+export type ElementTags<ElementType extends keyof HTMLElementTagNameMap> = {
+  [K in keyof HTMLElementTagNameMap[ElementType]]?: HTMLElementTagNameMap[ElementType][K] extends
+    | ((...args: any) => unknown)
+    | null
+    ? NonNullable<HTMLElementTagNameMap[ElementType][K]>
+    : { default: HTMLElementTagNameMap[ElementType][K]; latest?: Observable<HTMLElementTagNameMap[ElementType][K]> };
+};
+
+export const component = <ElementType extends keyof HTMLElementTagNameMap>(
+  elementType: ElementType,
+  tags: ElementTags<ElementType>,
+  children: Component[] = [],
+  idCallback: (id: string) => void = () => {}
+): Component => {
+  const castTags = tags as Record<
+    string,
+    { default: unknown; latest?: Observable<unknown> } | ((...args: unknown[]) => void)
+  >;
+  return {
+    elementType,
+    tagEventCallbacks: Object.fromEntries(
+      Object.entries(castTags)
+        .filter(([name, value]) => name.startsWith("on") && typeof value === "function")
+        .map(([tag, value]) => [tag, value as (...args: unknown[]) => void])
+    ),
+    tagValues: Object.fromEntries(
+      Object.entries(castTags)
+        .filter(([, value]) => typeof value !== "function")
+        .map(([tag, value]) => [tag, value as { default: unknown; latest?: Observable<unknown> }])
+    ),
+    children,
+    idCallback,
   };
+};
 
 const mapRecord = <A, B>(r: Record<string, A>, fn: (a: A) => B): Record<string, B> =>
   Object.fromEntries(Object.entries(r).map(([type, val]) => [type, fn(val)]));
@@ -76,10 +69,7 @@ const parts = ({
   ].join(" ")}>`,
 });
 
-export const pairChildrenWithId = (
-  children: SubscribeElement[],
-  parentId: string
-): { element: SubscribeElement; id: string }[] => {
+export const pairChildrenWithId = (children: Component[], parentId: string): { element: Component; id: string }[] => {
   const childrenByElementType = groupBy(
     children.map((element, originalIndex) => ({ originalIndex, element })),
     ({ element }) => element.elementType
@@ -101,7 +91,7 @@ export const pairChildrenWithId = (
   }));
 };
 
-export const renderToString = ({ elementType, tagValues, children }: SubscribeElement, givenId?: string): string => {
+export const renderToString = ({ elementType, tagValues, children }: Component, givenId?: string): string => {
   const id = givenId ?? elementType;
   const { open, close, inner } = parts({
     elementType,
