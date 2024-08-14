@@ -1,6 +1,7 @@
 import * as r from "rxjs";
 import * as C from "./lib/state/cursor";
 import * as O from "./lib/state/observableState";
+import * as Comp from "./lib/state/compare";
 import { pipe } from "fp-ts/function";
 
 type TestState = {
@@ -14,9 +15,13 @@ const defaultState: TestState = {
   two: { three: "it says 'three'" },
 };
 
-const atThree = pipe(C.id<TestState>(), C.prop("two"));
-const chg = O.change({ cursor: pipe(atThree, C.prop("three")), modify: (s) => s.toUpperCase() });
+const atThree = pipe(C.id<TestState>(), C.prop("two"), C.prop("three"));
+const chg = O.change({ cursor: atThree, modify: (s) => s.toUpperCase() });
 
-const state = O.eqState(defaultState, r.of(chg), []);
+const state = O.eqState(
+  defaultState,
+  r.of(chg),
+  Comp.struct({ one: Comp.number, two: Comp.struct({ three: Comp.string }) })
+);
 
 const threeListen = O.obsCursor(atThree, state);

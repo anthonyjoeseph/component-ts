@@ -1,9 +1,9 @@
 import * as r from "rxjs";
 import * as ro from "rxjs/operators";
-import { pairChildrenWithId, SubscribeElement } from "./lib-node";
+import { pairChildrenWithId, Component } from "./lib-node";
 
 export const hydrate = (
-  subscribeElement: SubscribeElement,
+  subscribeElement: Component,
   givenId?: string
 ): r.Observable<{ id: string; tag: string; value: unknown }> => {
   const id = givenId ?? subscribeElement.elementType;

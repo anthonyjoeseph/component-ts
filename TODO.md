@@ -19,9 +19,9 @@ NOTE: Save examples in directory of their own - will use as a form of docs
 
 Nice-to-have:
 
-1. fix "createElement" interface to have "getID" as callback
+1. rock-solid HMR
 1. code splitting (see notes)
-1. SSG
+1. SSG w/ routing
 1. SSR (see notes)
 1. xss
 1. markdown output (markedjs ?)

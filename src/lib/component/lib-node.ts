@@ -1,5 +1,6 @@
 import { Observable, type Subscription } from "rxjs";
 import { groupBy, sortBy } from "lodash";
+import { Behavior } from "../state/behavior";
 
 export type Component = {
   elementType: keyof HTMLElementTagNameMap;
@@ -15,32 +16,31 @@ export type ElementTags<ElementType extends keyof HTMLElementTagNameMap> = {
     | null
     ? NonNullable<HTMLElementTagNameMap[ElementType][K]>
     : { default: HTMLElementTagNameMap[ElementType][K]; latest?: Observable<HTMLElementTagNameMap[ElementType][K]> };
+} & {
+  getId?: (id: string) => void;
 };
 
 export const component = <ElementType extends keyof HTMLElementTagNameMap>(
   elementType: ElementType,
   tags: ElementTags<ElementType>,
-  children: Component[] = [],
-  idCallback: (id: string) => void = () => {}
+  children: Component[] = []
 ): Component => {
-  const castTags = tags as Record<
-    string,
-    { default: unknown; latest?: Observable<unknown> } | ((...args: unknown[]) => void)
-  >;
+  const castTags = tags as Record<string, Behavior<unknown> | ((...args: unknown[]) => void)>;
   return {
     elementType,
     tagEventCallbacks: Object.fromEntries(
       Object.entries(castTags)
-        .filter(([name, value]) => name.startsWith("on") && typeof value === "function")
+        .filter(([name, value]) => typeof value === "function" && name !== "getId")
         .map(([tag, value]) => [tag, value as (...args: unknown[]) => void])
     ),
     tagValues: Object.fromEntries(
       Object.entries(castTags)
         .filter(([, value]) => typeof value !== "function")
-        .map(([tag, value]) => [tag, value as { default: unknown; latest?: Observable<unknown> }])
+        .map(([tag, value]) => [tag, value as Behavior<unknown>])
     ),
     children,
-    idCallback,
+    idCallback:
+      (Object.entries(castTags).find(([name]) => name === "getId")?.[1] as (id: string) => void) ?? (() => {}),
   };
 };
 

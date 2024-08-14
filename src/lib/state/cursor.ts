@@ -25,3 +25,16 @@ export const prop =
     get: (s) => cursor.get(s)[prop],
     set: (modify) => (s) => Object.assign({}, s, { [prop]: modify(cursor.get(s)[prop]) }),
   });
+
+type ValueAtPath<Obj, Cursor> = Cursor extends readonly [infer Head extends keyof Obj, ...infer Rest]
+  ? ValueAtPath<Obj[Head], Rest>
+  : Obj;
+
+type TestState = {
+  one: number;
+  two: {
+    three: string;
+  };
+};
+
+type test = ValueAtPath<TestState, ["two", "three"]>;
