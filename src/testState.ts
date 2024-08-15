@@ -1,27 +1,13 @@
 import * as r from "rxjs";
-import * as C from "./lib/state/cursor";
-import * as O from "./lib/state/observableState";
-import * as Comp from "./lib/state/compare";
-import { pipe } from "fp-ts/function";
+import * as B from "./lib/state/behavior";
 
-type TestState = {
-  one: number;
+import BS = r.BehaviorSubject;
+
+const individuals = {
+  one: new BS<string | undefined>(undefined),
   two: {
-    three: string;
-  };
-};
-const defaultState: TestState = {
-  one: 1,
-  two: { three: "it says 'three'" },
+    three: new BS<number>(12),
+  },
 };
 
-const atThree = pipe(C.id<TestState>(), C.prop("two"), C.prop("three"));
-const chg = O.change({ cursor: atThree, modify: (s) => s.toUpperCase() });
-
-const state = O.eqState(
-  defaultState,
-  r.of(chg),
-  Comp.struct({ one: Comp.number, two: Comp.struct({ three: Comp.string }) })
-);
-
-const threeListen = O.obsCursor(atThree, state);
+const full = B.struct({ one: individuals.one, two: B.struct(individuals.two) });

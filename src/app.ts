@@ -7,7 +7,7 @@ const state = new r.BehaviorSubject(0);
 export const app = c("html", {}, [
   c("div", { innerText: { default: "hello" } }, [
     c("button", { innerText: { default: "increase" }, onclick: () => state.next(state.getValue() + 1) }),
-    c("div", { innerText: { default: "0", latest: state.pipe(ro.map((r) => String(r))) } }),
+    c("div", { innerText: { default: "0", latest: state.pipe(ro.map(String)) } }),
   ]),
   c("script", { src: { default: "./index.ts" } }),
 ]);
