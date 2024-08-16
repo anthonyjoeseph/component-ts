@@ -1,10 +1,9 @@
 import * as r from "rxjs";
 import * as ro from "rxjs/operators";
-import { pipe } from "fp-ts/function";
 import * as Eq from "fp-ts/Eq";
 
 import BS = r.BehaviorSubject;
-import { SafeDOMAction } from "./array/DOMAction";
+import { applyAction, SafeDOMAction } from "./array/DOMAction";
 import { arrayDiffEq } from "./array/diff";
 
 export const distinctUntilChanged = ro.distinctUntilChanged;
@@ -13,35 +12,46 @@ export type BehaviorSubjectLike<A> = r.Observable<A> & {
   getValue: () => A;
   next: (a: A) => void;
 };
-
-const a: BehaviorSubjectLike<number> = new BS(3);
+export type TypeOf<A extends BehaviorSubjectLike<any>> = A extends BehaviorSubjectLike<infer T> ? T : never;
 
 export const struct = <A>(subjs: {
   [K in keyof A]: BehaviorSubjectLike<A[K]>;
 }): BehaviorSubjectLike<A> => {
+  // emit once on subscribe
+  const allowEmit = new BS<number>(1);
+
   const getValue = () =>
     Object.fromEntries(
       Object.entries(subjs as Record<string, BS<unknown>>).map(([key, subj]) => [key, subj.getValue()] as const)
     ) as A;
   const next = (newVal: A) => {
-    allowEmit.next(false);
+    allowEmit.next(allowEmit.getValue() + 1);
     Object.entries(subjs).map(([key, subj]) => (subj as BS<unknown>).next((newVal as Record<string, unknown>)[key]));
   };
-  const allowEmit = new BS<boolean>(true);
-  const obs = r.merge(
-    ...Object.entries(subjs).map(([key, subj]) =>
-      (subj as r.Observable<unknown>).pipe(
-        ro.map(
-          (v): A => ({
-            ...getValue(),
-            [key]: v,
-          })
-        ),
-        ro.filter(() => allowEmit.getValue()),
-        ro.finalize(() => allowEmit.complete())
+
+  const obs = r
+    .merge(
+      ...Object.entries(subjs).map(([key, subj]) =>
+        (subj as r.Observable<unknown>).pipe(
+          ro.map(
+            (v): A => ({
+              ...getValue(),
+              [key]: v,
+            })
+          )
+        )
       )
     )
-  ) as BehaviorSubjectLike<A>;
+    .pipe(
+      ro.filter(() => {
+        if (0 < allowEmit.getValue()) {
+          allowEmit.next(allowEmit.getValue() - 1);
+          return true;
+        }
+        return false;
+      }),
+      ro.finalize(() => allowEmit.complete())
+    ) as BehaviorSubjectLike<A>;
   obs.getValue = getValue;
   obs.next = next;
   return obs;
@@ -61,26 +71,31 @@ export const behavior = <A>(behavior: BS<A>): Behavior<A> => ({
   latest: behavior.pipe(ro.skip(1)),
 });
 
-/**
- * Notes:
- * should be (b: BS<A[]> o: Observable<ArrayAction<A>>) => Observable<ArrayAction<A> | ArrayWarning<A>>
- *
- * _Should not return a subject_
- */
+export const applyNext = <A>(subj: r.Subject<A>, item: A): void => subj.next(item);
+
 export const arrayEq = <A>(
   arrays: BS<A[]>,
-  eq: Eq.Eq<A> = Eq.eqStrict,
-  actions: r.Observable<SafeDOMAction<A>>
+  actions: r.Observable<SafeDOMAction<A>> = r.EMPTY,
+  eq: Eq.Eq<A> = Eq.eqStrict
 ): r.Observable<SafeDOMAction<A>> => {
-  const allowEmit = new BS<boolean>(true);
+  const preventEmit = new BS<number>(0);
 
   return r.merge(
     arrays.pipe(
+      ro.filter(() => {
+        if (0 < preventEmit.getValue()) {
+          preventEmit.next(preventEmit.getValue() - 1);
+          return false;
+        }
+        return true;
+      }),
       ro.bufferCount(2),
       ro.mergeMap(([prev, current]) => r.from(arrayDiffEq(prev, current, eq))),
-      ro.filter(() => allowEmit.getValue()),
-      ro.finalize(() => allowEmit.complete())
+      ro.finalize(() => preventEmit.complete())
     ),
-    actions
+    actions.pipe(
+      ro.tap(() => preventEmit.next(preventEmit.getValue() + 1)),
+      ro.tap((r) => arrays.next(applyAction(arrays.getValue(), r)))
+    )
   );
 };

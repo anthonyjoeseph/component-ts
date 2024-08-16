@@ -134,20 +134,20 @@ export const applyAction = <A>(array: A[], action: SafeDOMAction<A>): A[] => {
       return [...action.items, ...array];
     case "append":
       return [...array, ...action.items];
-    // insertMany
+    // fp-ts-std: insertMany
     case "insertAt":
       return [...array.slice(0, action.index), ...action.items, ...array.slice(action.index, array.length)];
-    // dropAt + insertMany
+    // fp-ts-std: dropAt + insertMany
     case "replaceAt":
       return [
         ...array.slice(0, action.index),
         ...action.items,
         ...array.slice(action.index + action.items.length, array.length),
       ];
-    // dropAt
+    // fp-ts-std: dropAt
     case "deleteAt":
       return [...array.slice(0, action.index), ...array.slice(action.index + 1, array.length)];
-    // dropAt + insertMany
+    // fp-ts-std: dropAt + insertMany
     case "move":
       if (action.source < action.destination)
         return [
