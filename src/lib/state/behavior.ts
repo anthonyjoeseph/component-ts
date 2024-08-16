@@ -5,6 +5,7 @@ import * as Eq from "fp-ts/Eq";
 
 import BS = r.BehaviorSubject;
 import { SafeDOMAction } from "./array/DOMAction";
+import { arrayDiffEq } from "./array/diff";
 
 export const distinctUntilChanged = ro.distinctUntilChanged;
 
@@ -36,7 +37,8 @@ export const struct = <A>(subjs: {
             [key]: v,
           })
         ),
-        ro.filter(() => allowEmit.getValue())
+        ro.filter(() => allowEmit.getValue()),
+        ro.finalize(() => allowEmit.complete())
       )
     )
   ) as BehaviorSubjectLike<A>;
@@ -72,12 +74,13 @@ export const arrayEq = <A>(
 ): r.Observable<SafeDOMAction<A>> => {
   const allowEmit = new BS<boolean>(true);
 
-  arrays.pipe(ro.bufferCount(2)).subscribe(([prev, current]) => {
-    arrayDiff(prev, current, uniqueKey).forEach((action) => middleman.next({ type: "action", action }));
-  });
-  actions.subscribe((action) => {
-    const newArray = modifyArray(arrays.getValue(), action);
-    if (newArray._tag === "Some") middleman.next({ type: "array", array: newArray.value });
-  });
-  return actions;
+  return r.merge(
+    arrays.pipe(
+      ro.bufferCount(2),
+      ro.mergeMap(([prev, current]) => r.from(arrayDiffEq(prev, current, eq))),
+      ro.filter(() => allowEmit.getValue()),
+      ro.finalize(() => allowEmit.complete())
+    ),
+    actions
+  );
 };
