@@ -1,22 +1,48 @@
 import * as r from "rxjs";
 import * as ro from "rxjs/operators";
 import { pipe } from "fp-ts/function";
-import * as A from "fp-ts/Array";
+import * as Eq from "fp-ts/Eq";
 
 import BS = r.BehaviorSubject;
-import { ArrayAction, arrayDiff, modifyArray } from "./array";
+import { SafeDOMAction } from "./array/DOMAction";
 
 export const distinctUntilChanged = ro.distinctUntilChanged;
 
-export const struct = <A>(subjs: {
-  [K in keyof A]: BS<A[K]>;
-}): BS<A> => {
-  const defaultVal = Object.fromEntries(
-    Object.entries(subjs as Record<string, BS<unknown>>).map(([key, subj]) => [key, subj.getValue()] as const)
-  ) as A;
-  const newBS = new BS<A>(defaultVal);
+export type BehaviorSubjectLike<A> = r.Observable<A> & {
+  getValue: () => A;
+  next: (a: A) => void;
+};
 
-  return;
+const a: BehaviorSubjectLike<number> = new BS(3);
+
+export const struct = <A>(subjs: {
+  [K in keyof A]: BehaviorSubjectLike<A[K]>;
+}): BehaviorSubjectLike<A> => {
+  const getValue = () =>
+    Object.fromEntries(
+      Object.entries(subjs as Record<string, BS<unknown>>).map(([key, subj]) => [key, subj.getValue()] as const)
+    ) as A;
+  const next = (newVal: A) => {
+    allowEmit.next(false);
+    Object.entries(subjs).map(([key, subj]) => (subj as BS<unknown>).next((newVal as Record<string, unknown>)[key]));
+  };
+  const allowEmit = new BS<boolean>(true);
+  const obs = r.merge(
+    ...Object.entries(subjs).map(([key, subj]) =>
+      (subj as r.Observable<unknown>).pipe(
+        ro.map(
+          (v): A => ({
+            ...getValue(),
+            [key]: v,
+          })
+        ),
+        ro.filter(() => allowEmit.getValue())
+      )
+    )
+  ) as BehaviorSubjectLike<A>;
+  obs.getValue = getValue;
+  obs.next = next;
+  return obs;
 };
 
 export const keysFromDefault = <A extends Record<string, unknown>>(defaultValue: A) =>
@@ -39,9 +65,13 @@ export const behavior = <A>(behavior: BS<A>): Behavior<A> => ({
  *
  * _Should not return a subject_
  */
-export const array = <A>(arrays: BS<A[]>, uniqueKey: (a: A) => string): r.Subject<ArrayAction<A>> => {
-  const actions = new r.Subject<ArrayAction<A>>();
-  const middleman = new r.Subject<{ type: "action"; action: ArrayAction<A> } | { type: "array"; array: A[] }>();
+export const arrayEq = <A>(
+  arrays: BS<A[]>,
+  eq: Eq.Eq<A> = Eq.eqStrict,
+  actions: r.Observable<SafeDOMAction<A>>
+): r.Observable<SafeDOMAction<A>> => {
+  const allowEmit = new BS<boolean>(true);
+
   arrays.pipe(ro.bufferCount(2)).subscribe(([prev, current]) => {
     arrayDiff(prev, current, uniqueKey).forEach((action) => middleman.next({ type: "action", action }));
   });

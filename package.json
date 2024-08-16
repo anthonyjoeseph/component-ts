@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "fp-ts": "^2.16.9",
+    "fp-ts-std": "^0.19.1",
     "lodash": "^4.17.21",
     "rxjs": "^7.8.0"
   },
