@@ -114,10 +114,15 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
       latestKeep++;
       numInsertsSinceKeep = 0;
     } else if (currentEffect.type === "insert") {
+      // find an equivalent element that was marked for deletion
       const fromIndex = prevEffects.findIndex(
         (val): val is DeleteEffect => val.type === "delete" && eq.equals(prev[val.from], current[i])
       );
       if (fromIndex >= 0) {
+        // insert after the most recent keep
+        // we don't really use the "from" or "to" in Effects
+        // rather we use 'moveSources' and 'moveDestinations',
+        // which preserve references as the array is mutated over time
         const to = findIndexAtOccurrence(prevEffects, latestKeep, (val) => val.type === "keep") + 1;
         prevEffects[fromIndex] = { type: "move", from: fromIndex, to };
         currentEffects[i] = { type: "move", from: fromIndex, to };
@@ -130,6 +135,9 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   }
 
   // merge contiguous inserts
+  // don't filter out 0-count inserts -
+  // we need to preserve the currentEffects indicies
+  // so that "keep.to" fields are still correct (we use them in the next section)
   let streakStart: number | undefined;
   for (let i = 0; i < currentEffects.length; i++) {
     if (currentEffects[i].type === "insert") {
@@ -186,6 +194,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
 
   const domActions: DOMAction<A>[] = [];
 
+  // is our final "insert" actually an append?
   let appendIndex: number | undefined;
   for (let i = currentEffects.length - 1; i >= 0; i--) {
     const currentEffect = currentEffects[i];
