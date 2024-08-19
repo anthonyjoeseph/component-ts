@@ -80,15 +80,14 @@ export const arrayEq = <A>(
 
   return r.merge(
     arrays.pipe(
-      ro.filter(() => {
+      ro.pairwise(),
+      ro.mergeMap(([prev, current]) => {
         if (0 < preventEmit.getValue()) {
           preventEmit.next(preventEmit.getValue() - 1);
-          return false;
+          return r.EMPTY;
         }
-        return true;
+        return r.from(arrayDiffEq(prev, current, eq));
       }),
-      ro.pairwise(),
-      ro.mergeMap(([prev, current]) => r.from(arrayDiffEq(prev, current, eq))),
       ro.finalize(() => preventEmit.complete())
     ),
     actions.pipe(

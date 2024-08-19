@@ -168,16 +168,18 @@ export const modifyDomActions: {
       errorCallback(`cannot remove adjacent at index ${index} - index does not exist`);
       return [];
     }
+    const oldId = element.parentElement.children[indexWithinParent].id;
     element.parentElement.removeChild(element.children[indexWithinParent]);
-    removeFromObs(element.parentElement.children[indexWithinParent].id);
+    removeFromObs(oldId);
     return [];
   },
   removeAt: ({ index }, element, errorCallback, removeFromObs) => {
     if (!element.children[index]) {
       errorCallback(`cannot remove child at index ${index} - doesn't exist`);
     } else {
+      const removedId = element.children[index].id;
       element.removeChild(element.children[index]);
-      removeFromObs(element.children[index].id);
+      removeFromObs(removedId);
     }
     return [];
   },
@@ -206,8 +208,9 @@ export const modifyDomActions: {
       id: createId(element.id, component.elementType, element.children),
     }));
     const newElements = componentsWithId.map(({ component, id }) => createElement(component, id));
-    removeFromObs(element.parentElement.children[indexWithinParent].id);
+    const removedId = element.parentElement.children[indexWithinParent].id;
     element.parentElement.children[indexWithinParent].replaceWith(...newElements);
+    removeFromObs(removedId);
     return componentsWithId;
   },
   replaceAt: ({ components, index }, element, errorCallback, removeFromObs) => {
@@ -220,8 +223,9 @@ export const modifyDomActions: {
       id: createId(element.id, component.elementType, element.children),
     }));
     const newElements = componentsWithId.map(({ component, id }) => createElement(component, id));
-    removeFromObs(element.children[index].id);
+    const removedId = element.children[index].id;
     element.children[index].replaceWith(...newElements);
+    removeFromObs(removedId);
     return componentsWithId;
   },
   replaceChild: ({ component, id: oldId }, element, errorCallback, removeFromObs) => {
@@ -242,10 +246,9 @@ export const modifyDomActions: {
       id: createId(element.id, component.elementType, element.children),
     }));
     const newElements = componentsWithId.map(({ component, id }) => createElement(component, id));
-    for (const child of element.children) {
-      removeFromObs(child.id);
-    }
+    const oldIds = Array.from(element.children).map((el) => el.id);
     element.replaceChildren(...newElements);
+    oldIds.forEach(removeFromObs);
     return componentsWithId;
   },
   replaceWith: (components, element, errorCallback, removeFromObs) => {
@@ -254,8 +257,8 @@ export const modifyDomActions: {
       id: createId(element.id, component.elementType, element.children),
     }));
     const newElements = componentsWithId.map(({ component, id }) => createElement(component, id));
-    removeFromObs(element.id);
     element.replaceWith(...newElements);
+    removeFromObs(element.id);
     return componentsWithId;
   },
   domActionAdjacent: (domAction, element, errorCallback, removeFromObs) => {

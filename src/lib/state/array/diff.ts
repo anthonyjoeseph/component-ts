@@ -137,7 +137,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   let moveDestinations: { prevKeep: number; skipInserts: number }[] = [];
   const bumpMoveSources = (latestInsert: number, numInserted: number, upperBound?: number) => {
     moveSources = moveSources.map((source) =>
-      latestInsert < source && (!upperBound || source <= upperBound) ? source + numInserted : source
+      latestInsert <= source && (!upperBound || source <= upperBound) ? source + numInserted : source
     );
   };
   const bumpMoveDestinations = (latestInsert: number, numInserted: number, upperBound?: number) => {
@@ -261,13 +261,15 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   // a 'keep segment' is the # indices _before_ a 'keep' element
   let keepSegmentLength: number[] = [];
   let currentSegmentLength = 1;
+  let numPrevDeletes = 0;
   for (let i = 0; i < prevEffects.length; i++) {
     const currentEffect = prevEffects[i];
     if (currentEffect.type === "delete") {
       domActions.push({
         type: "deleteAt",
-        index: currentEffect.from,
+        index: currentEffect.from - numPrevDeletes,
       });
+      numPrevDeletes++;
       bumpMoveSources(i, -1);
       bumpMoveDestinations(i, -1);
     }
