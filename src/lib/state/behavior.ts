@@ -6,8 +6,6 @@ import BS = r.BehaviorSubject;
 import { applyAction, SafeDOMAction } from "./array/domAction";
 import { arrayDiffEq } from "./array/diff";
 
-export const distinctUntilChanged = ro.distinctUntilChanged;
-
 export type BehaviorSubjectLike<A> = r.Observable<A> & {
   getValue: () => A;
   next: (a: A) => void;
@@ -71,8 +69,6 @@ export const behavior = <A>(behavior: BS<A>): Behavior<A> => ({
   latest: behavior.pipe(ro.skip(1)),
 });
 
-export const applyNext = <A>(subj: r.Subject<A>, item: A): void => subj.next(item);
-
 export const arrayEq = <A>(
   arrays: BS<A[]>,
   actions: r.Observable<SafeDOMAction<A>> = r.EMPTY,
@@ -99,3 +95,9 @@ export const arrayEq = <A>(
     )
   );
 };
+
+export const applyNext =
+  <A>(subj: r.Subject<A>) =>
+  (newVal: A) => {
+    subj.next(newVal);
+  };
