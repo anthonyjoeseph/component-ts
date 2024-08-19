@@ -69,6 +69,8 @@ export const behavior = <A>(behavior: BS<A>): Behavior<A> => ({
   latest: behavior.pipe(ro.skip(1)),
 });
 
+export const behaviorEq = Eq.contramap((bs: BS<unknown>) => bs.getValue()) as <A>(eq: Eq.Eq<A>) => Eq.Eq<BS<A>>;
+
 export const arrayEq = <A>(
   arrays: BS<A[]>,
   actions: r.Observable<SafeDOMAction<A>> = r.EMPTY,
@@ -85,7 +87,7 @@ export const arrayEq = <A>(
         }
         return true;
       }),
-      ro.bufferCount(2),
+      ro.pairwise(),
       ro.mergeMap(([prev, current]) => r.from(arrayDiffEq(prev, current, eq))),
       ro.finalize(() => preventEmit.complete())
     ),

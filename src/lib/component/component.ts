@@ -1,23 +1,29 @@
-import { Observable, type Subscription } from "rxjs";
+import { Observable } from "rxjs";
 import { groupBy, sortBy } from "lodash";
 import { Behavior } from "../state/behavior";
+import { modifyDomTagNames, type ModifyDom } from "./modifyDom";
 
 export type Component = {
   elementType: keyof HTMLElementTagNameMap;
   tagEventCallbacks: Record<string, (...args: unknown[]) => void>;
   tagValues: Record<string, { default: unknown; latest?: Observable<unknown> }>;
+  modifyDom: ModifyDom;
   children: Component[];
   idCallback: (id: string) => void;
+  modifyDomErrorCallback: (error: string) => void;
 };
 
 export type ElementTags<ElementType extends keyof HTMLElementTagNameMap> = {
-  [K in keyof HTMLElementTagNameMap[ElementType]]?: HTMLElementTagNameMap[ElementType][K] extends
-    | ((...args: any) => unknown)
-    | null
-    ? NonNullable<HTMLElementTagNameMap[ElementType][K]>
-    : { default: HTMLElementTagNameMap[ElementType][K]; latest?: Observable<HTMLElementTagNameMap[ElementType][K]> };
+  [K in keyof HTMLElementTagNameMap[ElementType]]?: K extends keyof ModifyDom
+    ? ModifyDom[K]
+    : HTMLElementTagNameMap[ElementType][K] extends ((...args: any) => unknown) | null
+      ? NonNullable<HTMLElementTagNameMap[ElementType][K]>
+      : { default: HTMLElementTagNameMap[ElementType][K]; latest?: Observable<HTMLElementTagNameMap[ElementType][K]> };
 } & {
-  getId?: (id: string) => void;
+  [K in keyof ModifyDom]?: ModifyDom[K];
+} & {
+  getId?: (id: string | undefined) => void;
+  modifyDomError?: (error: string) => void;
 };
 
 export const component = <ElementType extends keyof HTMLElementTagNameMap>(
@@ -30,17 +36,24 @@ export const component = <ElementType extends keyof HTMLElementTagNameMap>(
     elementType,
     tagEventCallbacks: Object.fromEntries(
       Object.entries(castTags)
-        .filter(([name, value]) => typeof value === "function" && name !== "getId")
+        .filter(([name, value]) => typeof value === "function" && name !== "getId" && !modifyDomTagNames.includes(name))
         .map(([tag, value]) => [tag, value as (...args: unknown[]) => void])
     ),
     tagValues: Object.fromEntries(
       Object.entries(castTags)
-        .filter(([, value]) => typeof value !== "function")
+        .filter(([name, value]) => typeof value !== "function" && !modifyDomTagNames.includes(name))
         .map(([tag, value]) => [tag, value as Behavior<unknown>])
     ),
+    modifyDom: Object.fromEntries(
+      Object.entries(castTags)
+        .filter(([name]) => modifyDomTagNames.includes(name))
+        .map(([tag, value]) => [tag, value])
+    ) as ModifyDom,
     children,
     idCallback:
       (Object.entries(castTags).find(([name]) => name === "getId")?.[1] as (id: string) => void) ?? (() => {}),
+    modifyDomErrorCallback:
+      (Object.entries(castTags).find(([name]) => name === "modifyDomError")?.[1] as (id: string) => void) ?? (() => {}),
   };
 };
 

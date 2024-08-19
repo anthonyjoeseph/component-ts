@@ -1,5 +1,5 @@
 import { app } from "./app";
-import { renderToString } from "./lib/component/lib-node";
+import { renderToString } from "./lib/component/component";
 import fs from "fs/promises";
 
 (async () => {

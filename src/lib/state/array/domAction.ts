@@ -6,10 +6,6 @@ import * as E from "fp-ts/Either";
 
 export type DOMAction<A> =
   | {
-      type: "append";
-      items: A[];
-    }
-  | {
       type: "prepend";
       items: A[];
     }
@@ -132,8 +128,6 @@ export const applyAction = <A>(array: A[], action: SafeDOMAction<A>): A[] => {
       return action.items;
     case "prepend":
       return [...action.items, ...array];
-    case "append":
-      return [...array, ...action.items];
     // fp-ts-std: insertMany
     case "insertAt":
       return [...array.slice(0, action.index), ...action.items, ...array.slice(action.index, array.length)];
@@ -164,3 +158,15 @@ export const applyAction = <A>(array: A[], action: SafeDOMAction<A>): A[] => {
       ];
   }
 };
+
+export const mapDomAction =
+  <A, B>(fn: (a: A) => B) =>
+  (domAction: DOMAction<A>): DOMAction<B> => {
+    if (domAction.type === "move" || domAction.type === "deleteAt") {
+      return domAction;
+    }
+    return {
+      ...domAction,
+      items: domAction.items.map(fn),
+    };
+  };

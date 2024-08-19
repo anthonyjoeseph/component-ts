@@ -51,7 +51,8 @@ export const arrayDiffOrd = <A>(prev: SortedArray<A>, current: SortedArray<A>, o
     currentIndex++;
   }
   if (currentIndex < current.length - 1) {
-    actions.push({ type: "append", items: current.slice(currentIndex, current.length) });
+    // actions.push({ type: "append", items: current.slice(currentIndex, current.length) });
+    actions.push({ type: "insertAt", items: current.slice(currentIndex, current.length), index: currentIndex });
   }
   for (let i = currentIndex; i < current.length; i++) {
     currentIndex++;
@@ -245,7 +246,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   const domActions: DOMAction<A>[] = [];
 
   // is our final "insert" actually an append?
-  let appendIndex: number | undefined;
+  /* let appendIndex: number | undefined;
   for (let i = currentEffects.length - 1; i >= 0; i--) {
     const currentEffect = currentEffects[i];
     if (currentEffect.type === "keep") break;
@@ -253,7 +254,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
       appendIndex = i;
       break;
     }
-  }
+  } */
 
   // delete
 
@@ -295,9 +296,9 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
         bumpMoveSources(0, items.length);
         bumpMoveDestinations(0, items.length);
         latestInsert += items.length;
-      } else if (currentEffect.to === appendIndex) {
+      } /*  else if (currentEffect.to === appendIndex) {
         domActions.push({ type: "append", items });
-      } else {
+      } */ else {
         domActions.push({ type: "insertAt", items, index: latestInsert });
         bumpMoveSources(latestInsert, items.length);
         bumpMoveDestinations(latestInsert, items.length);
@@ -330,41 +331,3 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
 
   return domActions as unknown as SafeDOMAction<A>[];
 };
-
-/**
- * Notes:
-https://stackoverflow.com/questions/12514970/is-getelementbyid-efficient
-DOM abilities:
-- element.replaceChildren = replaceAll
-  - replaceChildren w/ no args  = deleteAll
-- element.append = append (many)
-  - node.appendChild (one)
-- element.prepend = prepend (many)
-- element.before = insertAt (many)
-- element.after = insertAt (many)
-- element.replaceWith = replace (should be able to insert many)
-- element.insertAdjacentElement = insertAt (one, from child)
-- node.insertBefore = (one, from parent)
-- node.removeChild = (one)
-- node.replaceChild = (one)
-
-
-Parent's 0 element is first child:
-- append = self.append
-- prepend = self.prepend
-- insertAt = self.children[index].after
-- replaceAt = self.children[index].replaceWith
-- replaceAll = self.replaceChildren
-- deleteAt = self.removeChild (only one)
-- move = self.removeChild & self.children[index].after (only one)
-
-Relative to siblings - after, never before:
-- append = self.parent.append
-- prepend = self.parent.prepend
-- insertAt = self.parent.children[index + self.index].after
-- replaceAt = self.parent.children[index + self.index].replaceWith
-- replaceAll = self.replaceChildren
-- deleteAt = self.parent.removeChild(index + self.index) (only one)
-- move = self.removeChild & self.children[index].after (only one)
-
- */
