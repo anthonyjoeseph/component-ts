@@ -87,12 +87,12 @@ export const arrayEq = <A>(
           return r.EMPTY;
         }
         return r.from(arrayDiffEq(prev, current, eq));
-      }),
-      ro.finalize(() => preventEmit.complete())
+      })
     ),
     actions.pipe(
       ro.tap(() => preventEmit.next(preventEmit.getValue() + 1)),
-      ro.tap((r) => arrays.next(applyAction(arrays.getValue(), r)))
+      ro.tap((r) => arrays.next(applyAction(arrays.getValue(), r))),
+      ro.finalize(() => preventEmit.complete())
     )
   );
 };
