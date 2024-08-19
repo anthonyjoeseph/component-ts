@@ -2,7 +2,7 @@ import * as fc from "fast-check";
 import deepEqual from "deep-equal";
 import { Ord as ordNumber } from "fp-ts/number";
 import { arrayDiffEq, arrayDiffOrd } from "../src/lib/state/array/diff";
-import { applyAction } from "../src/lib/state/array/DOMAction";
+import { applyAction } from "../src/lib/state/array/domAction";
 
 fc.assert(
   fc.property(fc.array(fc.integer()), fc.array(fc.integer()), (prev, current) =>
