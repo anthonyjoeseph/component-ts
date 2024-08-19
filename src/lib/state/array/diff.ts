@@ -1,9 +1,63 @@
 import * as Eq from "fp-ts/Eq";
 import * as Ord from "fp-ts/Ord";
-import { DOMAction, SafeDOMAction } from "./DOMAction";
 import { SortedArray } from "./ord";
-import { getPatch, applyPatch, bestSubSequence } from "fast-array-diff";
-import { type NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
+import { DOMAction, SafeDOMAction } from "./DOMAction";
+import { bestSubSequence } from "fast-array-diff";
+
+export const arrayDiffOrd = <A>(prev: SortedArray<A>, current: SortedArray<A>, ord: Ord.Ord<A>): SafeDOMAction<A>[] => {
+  if (prev.length === 0 || current.length === 0)
+    return [{ type: "replaceAll", items: current } as unknown as SafeDOMAction<A>];
+
+  let replaceAll = true;
+  let prevIndex = 0;
+  let currentIndex = 0;
+  let prevWasEquals = false;
+  const actions: DOMAction<A>[] = [];
+  while (prevIndex < prev.length && currentIndex < current.length) {
+    const prevItem = prev[prevIndex];
+    const currentItem = current[currentIndex];
+    const comparison = ord.compare(prevItem, currentItem);
+    if (comparison === -1) {
+      actions.push({ type: "deleteAt", index: currentIndex });
+      prevIndex++;
+      prevWasEquals = false;
+    } else if (comparison === 0) {
+      replaceAll = false;
+      prevWasEquals = true;
+      prevIndex++;
+      currentIndex++;
+    } else if (comparison === 1) {
+      const mostRecentAction = actions[actions.length - 1];
+      if (mostRecentAction?.type === "deleteAt" && !prevWasEquals) {
+        actions[actions.length - 1] = { type: "replaceAt", index: mostRecentAction.index, items: [currentItem] };
+      } else if (
+        mostRecentAction?.type === "prepend" ||
+        mostRecentAction?.type === "insertAt" ||
+        mostRecentAction?.type === "replaceAt"
+      ) {
+        mostRecentAction.items.push(currentItem);
+      } else if (actions.length === 0) {
+        actions.push({ type: "prepend", items: [currentItem] });
+      } else {
+        actions.push({ type: "insertAt", items: [currentItem], index: currentIndex });
+      }
+      currentIndex++;
+      prevWasEquals = false;
+    }
+  }
+  if (replaceAll) return [{ type: "replaceAll", items: current } as unknown as SafeDOMAction<A>];
+  for (let i = prevIndex; i < prev.length; i++) {
+    actions.push({ type: "deleteAt", index: currentIndex });
+    currentIndex++;
+  }
+  if (currentIndex < current.length - 1) {
+    actions.push({ type: "append", items: current.slice(currentIndex, current.length) });
+  }
+  for (let i = currentIndex; i < current.length; i++) {
+    currentIndex++;
+  }
+  return actions as unknown as SafeDOMAction<A>[];
+};
 
 // modified from https://github.com/YuJianrong/fast-array-diff/blob/master/src/diff/same.ts#L3
 export const lcsWithIndex = <T, U = T>(
@@ -20,12 +74,6 @@ export const lcsWithIndex = <T, U = T>(
     }
   });
   return ret;
-};
-
-export const arrayDiffOrd = <A>(prev: SortedArray<A>, current: SortedArray<A>, ord: Ord.Ord<A>): SafeDOMAction<A>[] => {
-  if (prev.length === 0 || current.length === 0)
-    return [{ type: "replaceAll", items: current } as unknown as SafeDOMAction<A>];
-  return [];
 };
 
 const findIndexAtOccurrence = <A>(arr: A[], occurrence: number, fn: (val: A) => boolean): number => {
@@ -53,6 +101,8 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
     return [{ type: "replaceAll", items: current } as unknown as SafeDOMAction<A>];
 
   const lcs = lcsWithIndex(prev, current, eq.equals);
+
+  if (lcs.length === 0) return [{ type: "replaceAll", items: current } as unknown as SafeDOMAction<A>];
 
   const prevEffects = prev.map((_, index): ArrayEffect => {
     const keptVal = lcs.find(({ oldIndex }) => oldIndex === index);
@@ -280,121 +330,6 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
 
   return domActions as unknown as SafeDOMAction<A>[];
 };
-
-const testAppend = arrayDiffEq([0, 1, 2], [0, 1, 2, 3]);
-
-const testPrepend = arrayDiffEq([0, 1, 2], [-1, 0, 1, 2]);
-
-const testReplace = arrayDiffEq([0, 1, 2], [0, 10, 11, 12, 2]);
-
-// [0, 1, 2, 3, 4], [0, 4, 9, 1, 9, 2, 9, 3]
-
-const testMoveBack = arrayDiffEq([0, 1, 2, 3, 4, 5, 6, 7], [0, 5, 9, 6, 9, 7, 1, 2, 3, 4]);
-
-const testMoveForward = arrayDiffEq([0, 1, 2, 3, 4, 5, 6, 7], [0, 4, 5, 6, 1, 9, 2, 9, 3, 7]);
-
-console.log(JSON.stringify({ testAppend, testPrepend, testReplace, testMoveBack, testMoveForward }, null, 2));
-
-/**
- * test move forward:
- * [0,1,2,3,4]
- * - insert [9] @ &1
- * [0,9,1,2,3,4]
- * - insert [9] @ &3
- * [0,9,1,9,2,3,4]
- * - insert [9] @ &5
- * [0,9,1,9,2,9,3,4]
- * - move &7 to &1
- * [0,4,9,1,9,2,9,3]
- */
-
-/**
-prev: keep, move, replace, delete
-current: keep, move, replace, insert
-
-prev:
-{type: 'delete', from: 0}
-{type: 'keep', from: 1, to: 1}
-{type: 'keep', from: 2, to: 2}
-{type: 'delete', from: 3}
-{type: 'keep', from: 4, to: 3}
-{type: 'keep', from: 5, to: 4}
-
-current:
-0 =
-{type: 'insert', to: 0}
-{type: 'keep', from: 1, to: 1}
-{type: 'keep', from: 2, to: 2}
-{type: 'keep', from: 4, to: 3}
-{type: 'keep', from: 5, to: 4}
-{type: 'insert', to: 5}
-{type: 'insert', to: 6}
-{type: 'insert', to: 7}
- */
-
-/**
- *
-ORD:
-- diff
-[1,2,3,6,7,8] -> [1,3,7,8,9]
-  - append '9'
-  - delete @ 3
-  - delete @ 1
-
-- upsert
-[1,2,3,6,7,8]  insert 452
-  - insert '4','5' @ 3
-  - replace ''
-
-- replace
-[1,2,3,6,7,8]
-
-
-EQ:
-- diff
-[1,2,4,5]->[0,1,3,4,2]
-  - move '2' @ 3
-  - delete @ 1
-  - insert '3' @ 1
-  - prepend '0'
-
-OR
-  - 
-
-- find values, in order, of all similar elements, paired w/ index
-  - [1,2,4]  ->  [[1, 0], [2, 1], [4, 2]]  &  [[1, 1], [4, 3], [2, 4]]
-
-- find indicies of longest contiguous array similarity
-  - [1,4] ->   [0, 2]  &   [1, 3]
-
-- [{type: "keep", destination: 1, value: 1}, {type: "keep", destination: 3, value: 4}]
-
-- find elements that are the same, from subset excluding contiguous similarity
-  - [2]   ->   [1]   &   [4]
-  - move:  1 -> 4-1=3
-
-- [{type: "keep", destination: 1, source: 0}, {type: "keep", destination: 3, source: 2}, {type: "move", destination: 4, source: 1}]
-
-- fill in the rest as "new"
-- [{type: "new", destination: 0, value: 0 }, {type: "keep", destination: 1, source: 0}, {type: "new", destination: 2, value: 3 }, {type: "keep", destination: 3, source: 2}, {type: "move", destination: 4, source: 1}]
-
-- replace 'news' with append, prepend, replace, insert, delete
-- [{}, {type: "keep", destination: 3, source: 2}, {type: "move", destination: 4, source: 1}]
-
-
-
-UNIQUE:
-- diff
-["one", "two", "four", "five"]->["zero", "one", "three", "four", "two"]
-  - move 'two' @ 4
-  - insert 'three' @ 1
-  - prepend 'zero'
-
-
-- insert
-
-
- */
 
 /**
  * Notes:
