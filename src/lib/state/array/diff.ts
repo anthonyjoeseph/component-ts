@@ -1,7 +1,7 @@
 import * as Eq from "fp-ts/Eq";
 import * as Ord from "fp-ts/Ord";
 import { SortedArray } from "./ord";
-import { DOMAction, SafeDOMAction } from "./DOMAction";
+import { DOMAction, SafeDOMAction } from "./domAction";
 import { bestSubSequence } from "fast-array-diff";
 
 export const arrayDiffOrd = <A>(prev: SortedArray<A>, current: SortedArray<A>, ord: Ord.Ord<A>): SafeDOMAction<A>[] => {
