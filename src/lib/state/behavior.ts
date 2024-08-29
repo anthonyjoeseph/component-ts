@@ -102,3 +102,8 @@ export const applyNext =
   (newVal: A) => {
     subj.next(newVal);
   };
+
+export const getValue =
+  <A>(bs: BS<A>) =>
+  () =>
+    bs.getValue();

@@ -1,6 +1,12 @@
 setAttribute?
 compareDocumentPosition?
 
+https://blog.xnim.me/event-loop-and-render-queue
+
+https://www.hi-interactive.com/blog/avoid-reflow-repaint
+
+https://github.com/wilsonpage/fastdom
+
 [immutable-assign](https://github.com/engineforce/ImmutableAssign)
 [baobab](https://github.com/Yomguithereal/baobab)
 

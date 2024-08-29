@@ -1,9 +1,10 @@
 import * as r from "rxjs";
 import * as ro from "rxjs/operators";
 import { component as c } from "./lib/component/component";
-import { applyNext, arrayEq } from "./lib/state/behavior";
+import { applyNext, arrayEq, getValue } from "./lib/state/behavior";
 import { mapDomAction } from "./lib/state/array/domAction";
 import { pipe } from "fp-ts/function";
+import * as R from "fp-ts/Record";
 
 const rainbow = ["red", "orange", "yellow", "green", "blue", "indigo", "violet"];
 
@@ -22,7 +23,19 @@ const inputVal = () =>
     (val) => (val as HTMLInputElement)?.value
   );
 
-arr.subscribe(console.log);
+const addOne = (num: number) => num + 1;
+const minusOne = (num: number) => num - 1;
+
+const both = {
+  addOne,
+  minusOne,
+};
+
+type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never;
+
+declare const desired: <A extends Record<string, (...a: any) => any>>(
+  a: A
+) => (...input: Parameters<A[keyof A]>) => { [K in keyof A]: ReturnType<A[K]> };
 
 const num = (num: number) =>
   c("div", {
