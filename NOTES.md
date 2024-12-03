@@ -19,3 +19,7 @@ https://github.com/wilsonpage/fastdom
 cyber security:
 [MDN](https://developer.mozilla.org/en-US/docs/Web/Security/Types_of_attacks)
 [OWASP](https://owasp.org/www-project-top-ten/2017/Top_10)
+
+[HTML AST](https://unifiedjs.com/explore/package/hastscript/)
+[HAST to html string](https://unifiedjs.com/explore/package/hast-util-to-html/)
+[HAST to dom obj](https://unifiedjs.com/explore/package/hast-util-to-dom/)
