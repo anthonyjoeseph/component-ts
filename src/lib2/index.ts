@@ -1,15 +1,10 @@
+import type { Root, Element, Properties } from "hast";
 import { h, Child, Result } from "hastscript";
-import { Root, Element, Properties } from "hast";
 import { DOMAction } from "../lib/state/array/domAction";
 import type { Observable, MonoTypeOperatorFunction } from "rxjs";
 import * as r from "rxjs";
 
-export const takeSynchronous =
-  <A>(): MonoTypeOperatorFunction<A> =>
-  (a) =>
-    a.pipe(r.takeUntil(r.of(null).pipe(r.observeOn(r.asapScheduler))));
-
-/* export const e = <ElementType extends keyof HTMLElementTagNameMap>(
+export const e = <ElementType extends keyof HTMLElementTagNameMap>(
   s: ElementType,
   p: { [K in keyof HTMLElementTagNameMap[ElementType]]?: Observable<HTMLElementTagNameMap[ElementType][K]> },
   c?: RxElement[]
@@ -68,7 +63,7 @@ export const takeSynchronous =
     r.map((elements): Action => ({ type: "init", element: h(s, p, elements) }))
   );
   return r.merge(init, ...childActions.map((child) => child.pipe(r.filter((m) => m.type !== "init"))));
-}; */
+};
 
 const test = h(null, [h("a")]);
 
