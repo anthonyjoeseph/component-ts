@@ -53,6 +53,22 @@
       "sourceMapPathOverrides": {
         "/__parcel_source_root/*": "${webRoot}/*"
       }
-    }
+    },
+    {
+      "name": "Debug node:test",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "tsx",
+      "runtimeArgs": [
+        "--test"
+      ],
+      "program": "src/lib2/element.test.ts",
+      "cwd": "${workspaceRoot}",
+      "internalConsoleOptions": "openOnSessionStart",
+      "skipFiles": [
+        "${workspaceFolder}/<node_internals>/**",
+        "node_modules/**"
+      ]
+    },
   ]
 }

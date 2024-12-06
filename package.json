@@ -8,7 +8,7 @@
     "browser": "parcel src/index.html",
     "browser-react": "parcel src/reactTest.html",
     "dev": "concurrently --kill-others \"npm run node\" \"npm run browser\"",
-    "test": "jest",
+    "test": "glob src/**/*.test.ts -c 'tsx --test'",
     "lib2": "tsx src/lib2/index.ts"
   },
   "author": "",
@@ -28,21 +28,19 @@
   },
   "devDependencies": {
     "@types/deep-equal": "^1.0.4",
-    "@types/jest": "^29.5.14",
     "@types/lodash": "^4.14.191",
+    "@types/node": "^22.10.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "babel-jest": "^29.7.0",
     "concurrently": "^8.2.2",
     "eslint": "^8.6.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-unused-imports": "^2.0.0",
-    "jest": "^29.7.0",
+    "glob": "^11.0.0",
     "nodemon": "^3.1.4",
     "parcel-bundler": "^1.12.5",
-    "ts-jest": "^29.2.5",
     "tsx": "^4.19.2",
     "typescript": "^5.1.3"
   }

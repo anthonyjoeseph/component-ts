@@ -1,5 +1,7 @@
 import * as r from "rxjs";
 import { asyncStart } from "./util";
+import { test } from "node:test";
+import * as assert from "node:assert/strict";
 
 const waitMillis = (millis: number) => new Promise((res) => setTimeout(res, millis));
 
@@ -10,7 +12,7 @@ test("of", async () => {
 
   const c = await r.firstValueFrom(b);
 
-  expect(c).toEqual([0]);
+  assert.deepStrictEqual(c, [0]);
 });
 
 test("from", async () => {
@@ -20,7 +22,7 @@ test("from", async () => {
 
   const c = await r.firstValueFrom(b);
 
-  expect(c).toEqual([0, 1, 2]);
+  assert.deepStrictEqual(c, [0, 1, 2]);
 });
 
 test("delayed of", async () => {
@@ -30,7 +32,7 @@ test("delayed of", async () => {
 
   const c = await r.firstValueFrom(b);
 
-  expect(c).toEqual([]);
+  assert.deepStrictEqual(c, []);
 });
 
 test("mixed of", async () => {
@@ -39,14 +41,14 @@ test("mixed of", async () => {
   const syncVals = await r.firstValueFrom(a.pipe(r.takeUntil(asyncStart), r.toArray()));
   const asyncVals = await r.firstValueFrom(a.pipe(r.skipUntil(asyncStart), r.toArray()));
 
-  expect(syncVals).toEqual([0, 2]);
-  expect(asyncVals).toEqual([1]);
+  assert.deepStrictEqual(syncVals, [0, 2]);
+  assert.deepStrictEqual(asyncVals, [1]);
 });
 
 test("subject", async () => {
   const a = new r.Subject<number>();
 
-  const [syncEmissions, asyncEmissions] = await Promise.all([
+  const [syncVals, asyncVals] = await Promise.all([
     r.lastValueFrom(a.pipe(r.takeUntil(asyncStart), r.toArray())),
     r.lastValueFrom(a.pipe(r.skipUntil(asyncStart), r.toArray())),
     waitMillis(0).then(() => {
@@ -57,14 +59,14 @@ test("subject", async () => {
     }),
   ]);
 
-  expect(syncEmissions).toEqual([]);
-  expect(asyncEmissions).toEqual([0, 1, 2]);
+  assert.deepStrictEqual(syncVals, []);
+  assert.deepStrictEqual(asyncVals, [0, 1, 2]);
 });
 
 test("behavior subject", async () => {
   const a = new r.BehaviorSubject(0);
 
-  const [syncEmissions, asyncEmissions] = await Promise.all([
+  const [syncVals, asyncVals] = await Promise.all([
     r.lastValueFrom(a.pipe(r.takeUntil(asyncStart), r.toArray())),
     r.lastValueFrom(a.pipe(r.skipUntil(asyncStart), r.toArray())),
     waitMillis(0).then(() => {
@@ -74,6 +76,6 @@ test("behavior subject", async () => {
     }),
   ]);
 
-  expect(syncEmissions).toEqual([0]);
-  expect(asyncEmissions).toEqual([1, 2]);
+  assert.deepStrictEqual(syncVals, [0]);
+  assert.deepStrictEqual(asyncVals, [1, 2]);
 });
