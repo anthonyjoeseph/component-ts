@@ -1,10 +1,10 @@
 import * as r from "rxjs";
-import { Action, e, InitAction, ModifyAction, ChildAction } from "./index";
+import { StaticAction, e, InitAction, ModifyAction, ChildAction } from "./index";
 import { h } from "hastscript";
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
 
-const filterIds = (actions: Action[]): Action[] =>
+const filterIds = (actions: StaticAction[]): StaticAction[] =>
   actions.map((action) =>
     action.type !== "init"
       ? action
@@ -40,18 +40,20 @@ test("has children", async () => {
     {
       type: "init",
       node: h("div", { id: "div", className: "class-name" }, [
-        h("a", { id: "div-a0", href: "abcd" }),
-        h("a", { id: "div-a1", href: "1234" }),
-        h("a", { id: "div-a2", href: "!@#$" }),
+        h("a", { id: "div-0a", href: "abcd" }),
+        h("a", { id: "div-1a", href: "1234" }),
+        h("a", { id: "div-2a", href: "!@#$" }),
       ]),
     } as InitAction,
   ]);
 });
 
 test("delayed children", async () => {
+  const delayedChild = e("a", { href: r.of("1234") }).pipe(r.delay(0));
+
   const node = e("div", { className: r.of("class-name") }, [
     e("a", { href: r.of("abcd") }),
-    e("a", { href: r.of("1234") }).pipe(r.delay(0)),
+    delayedChild,
     e("a", { href: r.of("!@#$") }),
   ]);
   const actions = await r.firstValueFrom(node.pipe(r.toArray()));
@@ -59,14 +61,14 @@ test("delayed children", async () => {
     {
       type: "init",
       node: h("div", { id: "div", className: "class-name" }, [
-        h("a", { id: "div-a0", href: "abcd" }),
-        h("a", { id: "div-a2", href: "!@#$" }),
+        h("a", { id: "div-0a", href: "abcd" }),
+        h("a", { id: "div-2a", href: "!@#$" }),
       ]),
     } as InitAction,
     {
       type: "child",
       targetId: "div",
-      domAction: { type: "insertAt", index: 1, items: [h("a", { id: "div-a1", href: "1234" })] },
+      domAction: { type: "insertAt", index: 1, items: [h("a", { id: "div-1a", href: "1234" })] },
     } as ChildAction,
   ]);
 });
@@ -82,9 +84,9 @@ test("most recent sync child is initialized", async () => {
     {
       type: "init",
       node: h("div", { id: "div", className: "class-name" }, [
-        h("a", { id: "div-a0", href: "abcd" }),
-        h("a", { id: "div-a1", href: "2" }),
-        h("a", { id: "div-a2", href: "!@#$" }),
+        h("a", { id: "div-0a", href: "abcd" }),
+        h("a", { id: "div-1a", href: "2" }),
+        h("a", { id: "div-2a", href: "!@#$" }),
       ]),
     } as InitAction,
   ]);
@@ -101,9 +103,9 @@ test("children in series", async () => {
     {
       type: "init",
       node: h("div", { id: "div", className: "class-name" }, [
-        h("a", { id: "div-a0", href: "abcd" }),
-        h("a", { id: "div-a1", href: "0" }),
-        h("a", { id: "div-a2", href: "!@#$" }),
+        h("a", { id: "div-0a", href: "abcd" }),
+        h("a", { id: "div-1a", href: "0" }),
+        h("a", { id: "div-2a", href: "!@#$" }),
       ]),
     } as InitAction,
     {
@@ -114,7 +116,7 @@ test("children in series", async () => {
     {
       type: "child",
       targetId: "div",
-      domAction: { type: "insertAt", index: 1, items: [h("a", { id: "div-a1", href: "1" })] },
+      domAction: { type: "insertAt", index: 1, items: [h("a", { id: "div-3a", href: "1" })] },
     } as ChildAction,
     {
       type: "child",
@@ -124,7 +126,7 @@ test("children in series", async () => {
     {
       type: "child",
       targetId: "div",
-      domAction: { type: "insertAt", index: 1, items: [h("a", { id: "div-a1", href: "2" })] },
+      domAction: { type: "insertAt", index: 1, items: [h("a", { id: "div-a4", href: "2" })] },
     } as ChildAction,
   ]);
 });
