@@ -1,11 +1,12 @@
 import * as r from "rxjs";
-import { asyncStart } from "./util";
+import { createAsyncStart } from "./util";
 import { test } from "node:test";
 import * as assert from "node:assert/strict";
 
 const waitMillis = (millis: number) => new Promise((res) => setTimeout(res, millis));
 
 test("of", async () => {
+  const asyncStart = createAsyncStart();
   const a = r.of(0);
 
   const b = a.pipe(r.takeUntil(asyncStart), r.toArray());
@@ -16,6 +17,7 @@ test("of", async () => {
 });
 
 test("from", async () => {
+  const asyncStart = createAsyncStart();
   const a = r.from([0, 1, 2]);
 
   const b = a.pipe(r.takeUntil(asyncStart), r.toArray());
@@ -26,6 +28,7 @@ test("from", async () => {
 });
 
 test("delayed of", async () => {
+  const asyncStart = createAsyncStart();
   const a = r.of(0);
 
   const b = a.pipe(r.delay(0), r.takeUntil(asyncStart), r.toArray());
@@ -36,6 +39,7 @@ test("delayed of", async () => {
 });
 
 test("mixed of", async () => {
+  const asyncStart = createAsyncStart();
   const a = r.merge(r.of(0), r.of(1).pipe(r.delay(0)), r.of(2));
 
   const syncVals = await r.firstValueFrom(a.pipe(r.takeUntil(asyncStart), r.toArray()));
@@ -46,6 +50,7 @@ test("mixed of", async () => {
 });
 
 test("subject", async () => {
+  const asyncStart = createAsyncStart();
   const a = new r.Subject<number>();
 
   const [syncVals, asyncVals] = await Promise.all([
@@ -64,6 +69,7 @@ test("subject", async () => {
 });
 
 test("behavior subject", async () => {
+  const asyncStart = createAsyncStart();
   const a = new r.BehaviorSubject(0);
 
   const [syncVals, asyncVals] = await Promise.all([
