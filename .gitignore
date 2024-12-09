@@ -4,3 +4,4 @@ dist
 .cache
 .vscode/settings.json
 .tap
+.parcel-cache

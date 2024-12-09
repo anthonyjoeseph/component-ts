@@ -8,9 +8,11 @@
     "browser": "parcel src/index.html",
     "browser-react": "parcel src/reactTest.html",
     "dev": "concurrently --kill-others \"npm run node\" \"npm run browser\"",
-    "test": "tap --node-arg=--import=tsx",
-    "test-watch": "tap repl w --node-arg=--import=tsx",
-    "lib2": "tsx src/lib2/index.ts"
+    "test": "tsx --test",
+    "test-watch": "tsx --test --watch",
+    "test-watch-nice": "tap repl w --node-arg=--import=tsx",
+    "lib2": "tsx src/lib2/index.ts",
+    "hmr-test": "parcel src/hmr/hmr.html"
   },
   "author": "",
   "license": "ISC",
@@ -31,6 +33,7 @@
     "@types/deep-equal": "^1.0.4",
     "@types/lodash": "^4.14.191",
     "@types/node": "^22.10.1",
+    "@types/parcel-env": "^0.0.6",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "concurrently": "^8.2.2",
@@ -40,7 +43,8 @@
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-unused-imports": "^2.0.0",
     "nodemon": "^3.1.4",
-    "parcel-bundler": "^1.12.5",
+    "parcel": "^2.13.2",
+    "process": "^0.11.10",
     "tap": "^21.0.1",
     "tsx": "^4.19.2",
     "typescript": "^5.1.3"
