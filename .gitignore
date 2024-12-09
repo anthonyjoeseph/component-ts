@@ -3,3 +3,4 @@ dist
 .DS_STORE
 .cache
 .vscode/settings.json
+.tap
