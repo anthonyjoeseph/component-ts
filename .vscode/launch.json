@@ -49,7 +49,7 @@
       "request": "launch",
       "name": "Debug Browser",
       "url": "http://localhost:1234",
-      "webRoot": "${workspaceFolder}/src",
+      "webRoot": "${workspaceFolder}/src/hmr",
       "sourceMapPathOverrides": {
         "/__parcel_source_root/*": "${webRoot}/*"
       }
