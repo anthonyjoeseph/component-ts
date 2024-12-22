@@ -1,83 +1,234 @@
-import type { Element, Text, Comment, Properties } from "hast";
+import type { Element, ElementContent, Text, Comment, Properties } from "hast";
 import { h, s } from "hastscript";
 import { DOMAction } from "../lib/state/array/domAction";
 import type { Observable } from "rxjs";
 import * as r from "rxjs";
 import { createAsyncStart } from "./util";
 
+type ElementNullableChildren = Omit<Element, "children"> & {
+  children: (ElementContent | null)[];
+};
+
 export const isDynamic = (a: DynamicAction | StaticAction): a is DynamicAction =>
   a.type === "dynamic-child" || a.type === "dynamic-init" || a.type === "dynamic-modify";
 
-const addIdAndIndexStatic = <A extends StaticAction>(parentId: string, id: number, action: A): A =>
-  action.type === "init"
-    ? ({
-        type: "init",
-        node: {
-          ...action.node,
-          properties: {
-            ...action.node.properties,
-            id: `${parentId}-${id}${action.node.properties.id}`,
+const currentIndex = (slot: number, childIds: number[][]): number =>
+  childIds.slice(0, slot).reduce<number>((acc, cur) => acc + cur.length, 0);
+
+const applyActionToNode = (
+  a: DynamicInitAction | DynamicModifyAction | DynamicChildAncestorAction | ModifyAction,
+  node: ElementNullableChildren
+): Element => {
+  if (a.type === "modify") {
+    return { ...node, properties: { ...node.properties, ...a.property } };
+  } else if (a.type === "dynamic-init") {
+    // TODO: do something w/ idCallback
+    const children = [...node.children];
+    children[a.index] = a.action.node;
+    return {
+      ...node,
+      children,
+    };
+  } else if (a.type === "dynamic-child-ancestor") {
+    let children = [...node.children];
+
+    if (a.domAction.type === "prepend") {
+      children = [...a.domAction.items, ...node.children];
+    } else if (a.domAction.type === "insertAt") {
+      children.splice(a.domAction.index, 0, ...a.domAction.items);
+    } else if (a.domAction.type === "replaceAt") {
+      children.splice(a.domAction.index, 1, ...a.domAction.items);
+    } else if (a.domAction.type === "deleteAt") {
+      children.splice(a.domAction.index, 1);
+    } else if (a.domAction.type === "move") {
+      const child = children[a.domAction.source];
+      if (a.domAction.destination < a.domAction.source) {
+        children.splice(a.domAction.source, 1);
+        children.splice(a.domAction.destination, 0, child);
+      } else {
+        children.splice(a.domAction.source, 1);
+        children.splice(a.domAction.destination - 1, 0, child);
+      }
+    } else {
+      children = a.domAction.items;
+    }
+    return {
+      ...node,
+      children,
+    };
+  }
+  return node;
+};
+
+const addIdAndIndex =
+  (parentId: string, slot: number, action: DynamicAction | StaticAction, childIds: number[][]) =>
+  (id: number): DynamicInitAction | DynamicModifyAction | DynamicChildAncestorAction => {
+    if (action.type === "init") {
+      return {
+        type: "dynamic-init",
+        index: currentIndex(slot, childIds),
+        action: {
+          type: "init",
+          node: {
+            ...action.node,
+            properties: { ...action.node.properties, id: `${parentId}-${id}${action.node.properties.id}` },
           },
+          idCallback: action.idCallback,
         },
-        idCallback: action.idCallback,
-      } as InitAction as A)
-    : action.type === "modify"
-      ? ({
+      };
+    } else if (action.type === "dynamic-init") {
+      return {
+        type: "dynamic-init",
+        index: currentIndex(slot, childIds) + action.index,
+        action: {
+          type: "init",
+          node: {
+            ...action.action.node,
+            properties: {
+              ...action.action.node.properties,
+              id: `${parentId}-${id}${action.action.node.properties.id}`,
+            },
+          },
+          idCallback: action.action.idCallback,
+        },
+      };
+    } else if (action.type === "modify") {
+      return {
+        type: "dynamic-modify",
+        index: currentIndex(slot, childIds),
+        action: {
           type: "modify",
           id: `${parentId}-${id}${action.id}`,
           property: action.property,
-        } as A)
-      : ({
-          type: "child",
-          targetId: `${parentId}-${id}${action.targetId}`,
-          domAction: action.domAction,
-        } as A);
-
-const addIdAndIndex = (
-  parentId: string,
-  slot: number,
-  action: DynamicAction | StaticAction,
-  childIds: (number | number[])[]
-): StaticAction => {
-  if (isDynamic(action)) {
-    if (action.type === "dynamic-child") {
-      const index = "index" in action.domAction ? slot + action.domAction.index : 0;
+        },
+      };
+    } else if (action.type === "dynamic-modify") {
+      return {
+        type: "dynamic-modify",
+        index: currentIndex(slot, childIds) + action.index,
+        action: {
+          type: "modify",
+          id: `${parentId}-${id}${action.action.id}`,
+          property: action.action.property,
+        },
+      };
+    } else if (action.type === "child" || action.type === "dynamic-child-ancestor") {
+      return {
+        type: "dynamic-child-ancestor",
+        targetId: `${parentId}-${id}${action.targetId}`,
+        domAction:
+          "items" in action.domAction
+            ? {
+                ...action.domAction,
+                items: action.domAction.items.map(
+                  (i): Element => ({
+                    ...i,
+                    properties: {
+                      ...i.properties,
+                      id: `${parentId}-${id}${i.properties.id}`,
+                    },
+                  })
+                ),
+              }
+            : action.domAction,
+      };
+    } else {
       const items =
         "items" in action.domAction
           ? action.domAction.items.map(
-              (i): Element => ({
+              (i, itemIndex): Element => ({
                 ...i,
                 properties: {
                   ...i.properties,
-                  id: `${parentId}-${slot + index}${i.properties.id}`,
+                  id: `${parentId}-${id + itemIndex}${i.properties.id}`,
                 },
               })
             )
           : [];
       return {
-        type: "child",
+        type: "dynamic-child-ancestor",
         targetId: parentId,
         domAction:
           action.domAction.type === "insertAt" || action.domAction.type === "replaceAt"
-            ? { type: action.domAction.type, index, items }
+            ? { type: action.domAction.type, index: currentIndex(slot, childIds) + action.domAction.index, items }
             : action.domAction.type === "prepend" || action.domAction.type === "replaceAll"
               ? { type: action.domAction.type, items }
               : action.domAction.type === "move"
                 ? {
                     type: "move",
-                    source: action.domAction.source + slot,
-                    destination: action.domAction.destination + slot,
+                    source: action.domAction.source + currentIndex(slot, childIds),
+                    destination: action.domAction.destination + currentIndex(slot, childIds),
                   }
-                : { type: "deleteAt", index },
+                : { type: "deleteAt", index: currentIndex(slot, childIds) + action.domAction.index },
       };
     }
-    return addIdAndIndexStatic(parentId, (childIds[slot] as number[])[action.index] as number, action.action);
-  }
-  return addIdAndIndexStatic(parentId, childIds[slot] as number, action);
-};
+  };
 
-const currentIndex = (slot: number, childIds: (number | number[])[]): number =>
-  childIds.slice(0, slot).reduce<number>((acc, cur) => acc + (Array.isArray(cur) ? cur.length : cur === -1 ? 0 : 1), 0);
+const toStaticAction = (action: DynamicModifyAction | DynamicChildAncestorAction): StaticAction =>
+  action.type === "dynamic-modify"
+    ? action.action
+    : {
+        type: "child",
+        targetId: action.targetId ?? "",
+        domAction: action.domAction,
+      };
+
+const updateMemory = (
+  action: DynamicInitAction | DynamicModifyAction | DynamicChildAncestorAction,
+  slot: number,
+  childIds: number[][],
+  mostRecentId: number
+): number => {
+  let newMostRecentId = mostRecentId;
+
+  // TODO: index out-of-bounds errors
+  if (action.type === "dynamic-init") {
+    childIds[slot] = [mostRecentId];
+    newMostRecentId++;
+  } else if (action.type === "dynamic-child-ancestor") {
+    if (action.domAction.type === "move") {
+      const id = childIds[slot][action.domAction.source];
+      if (action.domAction.destination < action.domAction.source) {
+        childIds[slot].splice(action.domAction.source, 1);
+        childIds[slot].splice(action.domAction.destination, 0, id);
+      } else {
+        childIds[slot].splice(action.domAction.source, 1);
+        childIds[slot].splice(action.domAction.destination - 1, 0, id);
+      }
+    } else if (action.domAction.type === "insertAt") {
+      childIds[slot].splice(
+        action.domAction.index,
+        0,
+        ...action.domAction.items.map((_, index) => mostRecentId + index)
+      );
+      newMostRecentId = mostRecentId + action.domAction.items.length;
+    } else if (action.domAction.type === "replaceAt") {
+      childIds[slot].splice(
+        action.domAction.index,
+        action.domAction.items.length,
+        ...action.domAction.items.map((_, index) => mostRecentId + index)
+      );
+      newMostRecentId = mostRecentId + action.domAction.items.length;
+    } else if (action.domAction.type === "deleteAt") {
+      childIds[slot].splice(action.domAction.index, 1);
+    } else if (action.domAction.type === "replaceAll") {
+      childIds[slot].splice(
+        0,
+        childIds[slot].length,
+        ...action.domAction.items.map((_, index) => mostRecentId + index)
+      );
+      newMostRecentId = mostRecentId + action.domAction.items.length;
+    } else if (action.domAction.type === "prepend") {
+      childIds[slot].splice(
+        0,
+        action.domAction.items.length,
+        ...action.domAction.items.map((_, index) => mostRecentId + index)
+      );
+      newMostRecentId = mostRecentId + action.domAction.items.length;
+    }
+  }
+  return newMostRecentId;
+};
 
 export const e = <ElementType extends keyof HTMLElementTagNameMap>(
   selector: ElementType,
@@ -86,10 +237,11 @@ export const e = <ElementType extends keyof HTMLElementTagNameMap>(
       ? never
       : K]?: Observable<HTMLElementTagNameMap[ElementType][K]>;
   },
-  children?: RxNode[],
+  children: RxNode[] = [],
   idCallback: IdCallback = () => {}
 ): RxStaticNode => {
   const asyncStart = createAsyncStart();
+
   const modifiers = Object.entries(properties)
     .filter(([_, prop]) => !!prop)
     .map(([key, prop]) =>
@@ -98,178 +250,86 @@ export const e = <ElementType extends keyof HTMLElementTagNameMap>(
       )
     );
 
-  const mergedProperties = r.merge(...modifiers);
-  const asyncProperties = mergedProperties.pipe(r.skipUntil(asyncStart));
-  const initProperties = mergedProperties.pipe(
-    r.takeUntil(asyncStart),
-    r.map((action) => action.property),
-    r.toArray(),
-    r.map((props): Properties => {
-      return props.reduce((acc, cur) => ({ ...acc, ...cur }), {});
-    })
-  );
-
-  if (!children || children.length === 0)
+  if (children.length === 0) {
     return r.merge(
-      r.from(
-        initProperties.pipe(
-          r.map((props) => {
-            const node = h(selector, { ...props, id: selector });
-            return { type: "init", node, idCallback } as InitAction;
-          })
-        )
-      ),
-      asyncProperties
-    );
-
-  const childIds = new Array<number | number[]>(children.length).fill(-1);
-  let mostRecentId = 0;
-
-  const storedChildren = (children as Observable<StaticAction | DynamicAction>[]).map((c, slot) =>
-    c.pipe(
-      r.tap((action) => {
-        if (action.type === "init") {
-          childIds[slot] = mostRecentId++;
-        } else if (isDynamic(action)) {
-          if (!childIds[slot] || !Array.isArray(childIds[slot])) {
-            childIds[slot] = [];
-          }
-          const arrayChildIds = childIds[slot];
-          // TODO: index out-of-bounds errors
-          if (action.type === "dynamic-init") {
-            arrayChildIds.splice(action.index, 0, mostRecentId++);
-          } else if (action.type === "dynamic-child") {
-            if (action.domAction.type === "move") {
-              const id = arrayChildIds[action.domAction.source];
-              if (action.domAction.destination < action.domAction.source) {
-                arrayChildIds.splice(action.domAction.source, 1);
-                arrayChildIds.splice(action.domAction.destination, 0, id);
-              } else {
-                arrayChildIds.splice(action.domAction.source, 1);
-                arrayChildIds.splice(action.domAction.destination - 1, 0, id);
-              }
-            } else if (action.domAction.type === "insertAt") {
-              arrayChildIds.splice(
-                action.domAction.index,
-                0,
-                ...action.domAction.items.map((_, index) => mostRecentId + index)
-              );
-              mostRecentId += action.domAction.items.length;
-            } else if (action.domAction.type === "replaceAt") {
-              arrayChildIds.splice(
-                action.domAction.index,
-                action.domAction.items.length,
-                ...action.domAction.items.map((_, index) => mostRecentId + index)
-              );
-              mostRecentId += action.domAction.items.length;
-            } else if (action.domAction.type === "deleteAt") {
-              arrayChildIds.splice(action.domAction.index, 1);
-            } else if (action.domAction.type === "replaceAll") {
-              arrayChildIds.splice(
-                0,
-                arrayChildIds.length,
-                ...action.domAction.items.map((_, index) => mostRecentId + index)
-              );
-              mostRecentId += action.domAction.items.length;
-            } else if (action.domAction.type === "prepend") {
-              arrayChildIds.splice(
-                0,
-                action.domAction.items.length,
-                ...action.domAction.items.map((_, index) => mostRecentId + index)
-              );
-              mostRecentId += action.domAction.items.length;
-            }
-          }
-        }
-        // incoming "child" actions only act on indirect descendants
-        // incoming "modify" actions won't affect child ids
-      })
-    )
-  );
-
-  const childrenWithSlot = r.merge(...storedChildren.map((c, index) => c.pipe(r.map((a) => [a, index] as const))));
-
-  const childrenWithId = childrenWithSlot.pipe(
-    r.map(([action, slot]): [StaticAction, number] => [addIdAndIndex(selector, slot, action, childIds), slot])
-  );
-
-  const arrayActions = childrenWithId.pipe(
-    r.filter(([m]) => m.type === "child"),
-    r.map(([a]) => a)
-  );
-
-  const initChildren = r
-    .merge(
-      ...storedChildren.map((c, slot) =>
-        c.pipe(
-          r.filter((v): v is InitAction => v.type === "init"),
-          r.map((action): [Element, IdCallback, number] => [
-            addIdAndIndexStatic(selector, childIds[slot] as number, action).node,
-            action.idCallback,
-            slot,
-          ]),
-          r.takeUntil(asyncStart),
-          r.last(undefined, "none") // need a default value - will crash if empty
-        )
-      )
-    )
-    .pipe(
-      r.filter((a) => typeof a !== "string"),
-      r.toArray(),
-      r.map((elementsWithIndicies) =>
-        elementsWithIndicies.sort(([, , a], [, , b]) => a - b).map(([e, idc]): [Element, IdCallback] => [e, idc])
-      )
-    );
-
-  const init = r.forkJoin([initProperties, initChildren]).pipe(
-    r.map(([properties, children]): InitAction => {
-      return {
-        type: "init",
-        node: h(
-          selector,
-          { id: selector, ...properties },
-          children.map(([e]) => e)
+      r.merge(...modifiers).pipe(
+        r.scan(
+          (acc, cur) => {
+            return applyActionToNode(cur, acc);
+          },
+          h(selector, { id: selector })
         ),
-        idCallback: (id) => {
-          idCallback(id);
-          children.forEach(([node, childCallback], index) => {
-            if (node.type === "element") childCallback(`${id}-${node.properties.id}${index}`);
-          });
-        },
-      };
+        r.takeUntil(asyncStart),
+        r.last(undefined, h(selector, { id: selector })),
+        r.map((node): InitAction => {
+          return { type: "init", node, idCallback };
+        })
+      ),
+      r.merge(...modifiers).pipe(r.skipUntil(asyncStart))
+    );
+  }
+
+  let mostRecentId = 0;
+  const childIds = new Array<undefined>(children.length).fill(undefined).map((): number[] => []);
+
+  const childrenAsDynamicActions = r.merge(
+    ...children.map((c, slot) => c.pipe(r.map((a) => [addIdAndIndex(selector, slot, a, childIds), slot] as const)))
+  );
+
+  const initAction = r.merge(...modifiers, childrenAsDynamicActions, asyncStart.pipe(r.map(() => "asyncStart"))).pipe(
+    r.scan(
+      (acc, cur) => {
+        if (typeof cur === "string") return { element: acc.element, asyncStarted: true };
+        if ("property" in cur) return { element: applyActionToNode(cur, acc.element), asyncStarted: acc.asyncStarted };
+        const [getAction, slot] = cur;
+        const actionWithId = getAction(mostRecentId);
+        const node = applyActionToNode(actionWithId, acc.element);
+        mostRecentId = updateMemory(actionWithId, slot, childIds, mostRecentId);
+        return { element: node, asyncStarted: acc.asyncStarted };
+      },
+      { element: h(selector, { id: selector }), asyncStarted: false }
+    ),
+    r.takeWhile(({ element, asyncStarted }) => {
+      return !asyncStarted || element.children.length < children.length;
+    }),
+    r.last(undefined, { element: h(selector, { id: selector }) }),
+    r.map(({ element }): InitAction => {
+      return { type: "init", node: element, idCallback };
     })
   );
 
-  const addChildren = childrenWithId.pipe(
-    r.filter((v): v is [InitAction, number] => v[0].type === "init"),
-    r.skipUntil(asyncStart),
-    r.mergeMap(([m, index]) => {
-      if (childIds[index]) {
-        return r.of(
-          {
-            type: "child",
-            targetId: selector,
-            domAction: { type: "deleteAt", index: currentIndex(index, childIds) },
-          } as ChildAction,
-          {
-            type: "child",
-            targetId: selector,
-            domAction: { type: "insertAt", index: currentIndex(index, childIds), items: [m.node] },
-          } as ChildAction
-        );
-      }
-      return r.of({
-        type: "child",
-        targetId: selector,
-        domAction: { type: "insertAt", index: currentIndex(index, childIds), items: [m.node] },
-      } as ChildAction);
+  const postInitModifys: RxStaticNode = r.merge(...modifiers).pipe(
+    r.skipUntil(initAction),
+    r.tap((m) => {
+      console.log(m);
     })
   );
 
-  return r.merge(init, asyncProperties, arrayActions, addChildren);
+  const postInitChildren: RxStaticNode = childrenAsDynamicActions.pipe(
+    r.skipUntil(initAction),
+    r.map(([getAction, slot]) => {
+      const action = getAction(mostRecentId);
+      const convertInits =
+        action.type === "dynamic-init"
+          ? ({
+              type: "dynamic-child-ancestor",
+              targetId: selector,
+              domAction: {
+                type: childIds[slot].length > 0 ? "replaceAt" : "insertAt",
+                index: action.index,
+                items: [action.action.node],
+              },
+            } as DynamicChildAncestorAction)
+          : action;
+      mostRecentId = updateMemory(convertInits, slot, childIds, mostRecentId);
+      return convertInits;
+    }),
+    r.map(toStaticAction)
+  );
+
+  return r.merge(initAction, postInitModifys, postInitChildren);
 };
-
-export type RxNode = RxStaticNode | RxDynamicNode;
+export type RxNode = Observable<StaticAction | DynamicAction>;
 
 export type RxStaticNode = Observable<StaticAction>;
 export type StaticAction = InitAction | ModifyAction | ChildAction;
@@ -290,7 +350,7 @@ export type ChildAction = {
 };
 
 export type RxDynamicNode = Observable<DynamicAction>;
-export type DynamicAction = DynamicInitAction | DynamicModifyAction | DynamicChildAction;
+export type DynamicAction = DynamicInitAction | DynamicModifyAction | DynamicChildAction | DynamicChildAncestorAction;
 export type DynamicInitAction = {
   type: "dynamic-init";
   index: number;
@@ -303,6 +363,11 @@ export type DynamicModifyAction = {
 };
 export type DynamicChildAction = {
   type: "dynamic-child";
+  domAction: DOMAction<Element>;
+};
+export type DynamicChildAncestorAction = {
+  type: "dynamic-child-ancestor";
+  targetId: string;
   domAction: DOMAction<Element>;
 };
 
@@ -332,6 +397,9 @@ export type ValueOf<A> = A[keyof A];
  *   - insert/replace/delete/move out of bounds
  *   - non-array action from an array slot, or vice versa
  *     - able to prevent this one with types!
+ *  - mdx
+ *   - https://github.com/parcel-bundler/parcel/blob/v2/packages/transformers/mdx/src/MDXTransformer.js
+ *   - https://github.com/syntax-tree/mdast-util-mdx
  */
 
 /**

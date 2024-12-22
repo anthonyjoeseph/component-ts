@@ -8,20 +8,20 @@ export const hmr = <A>(parentModule: NodeModule): r.MonoTypeOperatorFunction<A> 
 
   if (parentModule.hot) {
     parentModule.hot.dispose((data) => {
-      const exportPair = Object.entries(parentModule.exports).find(
+      const exportName = Object.entries(parentModule.exports).find(
         ([, value]) => (value as any)?.uniqueId === uniqueId
-      );
-      if (exportPair) {
-        data[exportPair[0]] = currentObs;
+      )?.[0];
+      if (exportName) {
+        data[exportName] = currentObs;
       }
     });
     parentModule.hot.accept(() => {
       isReloaded = true;
-      const exportPair = Object.entries(parentModule.exports).find(
+      const exportName = Object.entries(parentModule.exports).find(
         ([, value]) => (value as any)?.uniqueId === uniqueId
-      );
-      if (exportPair) {
-        currentObs = parentModule.hot.data[exportPair[0]];
+      )?.[0];
+      if (exportName) {
+        currentObs = parentModule.hot.data[exportName];
       }
     });
   }
