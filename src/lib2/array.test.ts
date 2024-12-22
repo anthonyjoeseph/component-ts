@@ -1,5 +1,6 @@
 import * as r from "rxjs";
 import { StaticAction, element as e, InitAction, ModifyAction, ChildAction, RxNode } from "./element";
+import { array as a } from "./array";
 import { h } from "hastscript";
 import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
@@ -14,7 +15,7 @@ const filterIds = (actions: StaticAction[]): StaticAction[] =>
         } as InitAction)
   );
 
-describe("element", () => {
+describe("array", () => {
   test.skip("has properties", async () => {
     const node = e("a", { href: r.of("abcd") });
     const initAction = await r.firstValueFrom(node);

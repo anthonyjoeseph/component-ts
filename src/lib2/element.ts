@@ -62,8 +62,24 @@ const applyActionToNode = (
 
 const addIdAndIndex =
   (parentId: string, slot: number, action: DynamicAction | StaticAction, childIds: number[][]) =>
-  (id: number): DynamicInitAction | DynamicModifyAction | DynamicChildAncestorAction => {
+  (id: number, isAsync: boolean): DynamicInitAction | DynamicModifyAction | DynamicChildAncestorAction => {
     if (action.type === "init") {
+      if (isAsync) {
+        return {
+          type: "dynamic-child-ancestor",
+          targetId: parentId,
+          domAction: {
+            type: childIds[slot].length > 0 ? "replaceAt" : "insertAt",
+            index: currentIndex(slot, childIds),
+            items: [
+              {
+                ...action.node,
+                properties: { ...action.node.properties, id: `${parentId}-${id}${action.node.properties.id}` },
+              },
+            ],
+          },
+        } as DynamicChildAncestorAction;
+      }
       return {
         type: "dynamic-init",
         index: currentIndex(slot, childIds),
@@ -77,6 +93,25 @@ const addIdAndIndex =
         },
       };
     } else if (action.type === "dynamic-init") {
+      if (isAsync) {
+        return {
+          type: "dynamic-child-ancestor",
+          targetId: parentId,
+          domAction: {
+            type: childIds[slot].length > 0 ? "replaceAt" : "insertAt",
+            index: action.index,
+            items: [
+              {
+                ...action.action.node,
+                properties: {
+                  ...action.action.node.properties,
+                  id: `${parentId}-${id}${action.action.node.properties.id}`,
+                },
+              },
+            ],
+          },
+        } as DynamicChildAncestorAction;
+      }
       return {
         type: "dynamic-init",
         index: currentIndex(slot, childIds) + action.index,
@@ -230,7 +265,7 @@ const updateMemory = (
   return newMostRecentId;
 };
 
-export const e = <ElementType extends keyof HTMLElementTagNameMap>(
+export const element = <ElementType extends keyof HTMLElementTagNameMap>(
   selector: ElementType,
   properties: {
     [K in keyof HTMLElementTagNameMap[ElementType] as HTMLElementTagNameMap[ElementType][K] extends (...a: any) => any
@@ -250,25 +285,6 @@ export const e = <ElementType extends keyof HTMLElementTagNameMap>(
       )
     );
 
-  if (children.length === 0) {
-    return r.merge(
-      r.merge(...modifiers).pipe(
-        r.scan(
-          (acc, cur) => {
-            return applyActionToNode(cur, acc);
-          },
-          h(selector, { id: selector })
-        ),
-        r.takeUntil(asyncStart),
-        r.last(undefined, h(selector, { id: selector })),
-        r.map((node): InitAction => {
-          return { type: "init", node, idCallback };
-        })
-      ),
-      r.merge(...modifiers).pipe(r.skipUntil(asyncStart))
-    );
-  }
-
   let mostRecentId = 0;
   const childIds = new Array<undefined>(children.length).fill(undefined).map((): number[] => []);
 
@@ -279,56 +295,40 @@ export const e = <ElementType extends keyof HTMLElementTagNameMap>(
   const initAction = r.merge(...modifiers, childrenAsDynamicActions, asyncStart.pipe(r.map(() => "asyncStart"))).pipe(
     r.scan(
       (acc, cur) => {
-        if (typeof cur === "string") return { element: acc.element, asyncStarted: true };
-        if ("property" in cur) return { element: applyActionToNode(cur, acc.element), asyncStarted: acc.asyncStarted };
+        if (typeof cur === "string") return { ...acc, asyncStart: true };
+        if (acc.asyncStart) return { ...acc, asyncAction: cur };
+        if ("property" in cur) return { ...acc, element: applyActionToNode(cur, acc.element) };
         const [getAction, slot] = cur;
-        const actionWithId = getAction(mostRecentId);
+        const actionWithId = getAction(mostRecentId, false);
         const node = applyActionToNode(actionWithId, acc.element);
         mostRecentId = updateMemory(actionWithId, slot, childIds, mostRecentId);
-        return { element: node, asyncStarted: acc.asyncStarted };
+        return { ...acc, element: node };
       },
-      { element: h(selector, { id: selector }), asyncStarted: false }
+      {
+        element: h(selector, { id: selector }),
+        asyncStart: false,
+        asyncAction: undefined as
+          | ModifyAction
+          | readonly [
+              (id: number, isAsync: boolean) => DynamicInitAction | DynamicModifyAction | DynamicChildAncestorAction,
+              number,
+            ]
+          | undefined,
+      }
     ),
-    r.takeWhile(({ element, asyncStarted }) => {
-      return !asyncStarted || element.children.length < children.length;
-    }),
-    r.last(undefined, { element: h(selector, { id: selector }) }),
-    r.map(({ element }): InitAction => {
-      return { type: "init", node: element, idCallback };
+    r.filter(({ asyncStart }) => asyncStart),
+    r.map(({ element: node, asyncAction }): StaticAction => {
+      if (asyncAction === undefined) return { type: "init", node, idCallback };
+      if ("property" in asyncAction) return asyncAction;
+      const [getAction, slot] = asyncAction;
+      const action = getAction(mostRecentId, true);
+      mostRecentId = updateMemory(action, slot, childIds, mostRecentId);
+      return toStaticAction(action as DynamicModifyAction | DynamicChildAncestorAction);
     })
   );
-
-  const postInitModifys: RxStaticNode = r.merge(...modifiers).pipe(
-    r.skipUntil(initAction),
-    r.tap((m) => {
-      console.log(m);
-    })
-  );
-
-  const postInitChildren: RxStaticNode = childrenAsDynamicActions.pipe(
-    r.skipUntil(initAction),
-    r.map(([getAction, slot]) => {
-      const action = getAction(mostRecentId);
-      const convertInits =
-        action.type === "dynamic-init"
-          ? ({
-              type: "dynamic-child-ancestor",
-              targetId: selector,
-              domAction: {
-                type: childIds[slot].length > 0 ? "replaceAt" : "insertAt",
-                index: action.index,
-                items: [action.action.node],
-              },
-            } as DynamicChildAncestorAction)
-          : action;
-      mostRecentId = updateMemory(convertInits, slot, childIds, mostRecentId);
-      return convertInits;
-    }),
-    r.map(toStaticAction)
-  );
-
-  return r.merge(initAction, postInitModifys, postInitChildren);
+  return initAction;
 };
+
 export type RxNode = Observable<StaticAction | DynamicAction>;
 
 export type RxStaticNode = Observable<StaticAction>;

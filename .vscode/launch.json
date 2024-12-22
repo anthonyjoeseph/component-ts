@@ -70,5 +70,19 @@
         "node_modules/**"
       ]
     },
+    {
+      "name": "Debug index",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "tsx",
+      "runtimeArgs": [],
+      "program": "src/lib2/index.ts",
+      "cwd": "${workspaceRoot}",
+      "internalConsoleOptions": "openOnSessionStart",
+      "skipFiles": [
+        "${workspaceFolder}/<node_internals>/**",
+        "node_modules/**"
+      ]
+    },
   ]
 }
