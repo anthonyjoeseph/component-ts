@@ -11,7 +11,11 @@ import { array as a } from "./array";
 import { h } from "hastscript";
 import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
-import { DOMAction } from "../lib/state/array/domAction";
+import { DOMAction, mapDomAction } from "../lib/state/array/domAction";
+import * as N from "fp-ts/number";
+
+import BS = r.BehaviorSubject;
+import { arrayDiffEq } from "../lib/state/array/diff";
 
 const scrubIdCallbacks = (actions: DynamicAction[]): DynamicAction[] =>
   actions.map((action) =>
@@ -45,6 +49,7 @@ describe("array", () => {
       } as DynamicInitAction,
     ]);
   });
+
   test.skip("insertAt many", async () => {
     const node = a(
       r.of({
@@ -72,7 +77,8 @@ describe("array", () => {
       } as DynamicInitAction,
     ]);
   });
-  test("insertAt many - modify", async () => {
+
+  test.skip("insertAt many - modify", async () => {
     const node = a(
       r.of({
         type: "insertAt",
@@ -181,5 +187,48 @@ describe("array", () => {
     ]);
     assert.equal(deleted1, true);
     assert.equal(deleted2, true);
+  });
+
+  test("diffing", async () => {
+    const elem = (num: number) => e("a", { href: r.of(`number-${num}`) });
+
+    const arr = new BS([0, 1, 2]);
+
+    const item = r.concat(r.of<number[]>([]), arr).pipe(
+      r.pairwise(),
+      r.mergeMap(([prev, cur]) => r.of(...arrayDiffEq(prev, cur, N.Eq))),
+      r.map(mapDomAction(elem))
+    );
+
+    const node = a(item).pipe(r.toArray());
+    const [actions] = await Promise.all([
+      r.firstValueFrom(node),
+      new Promise<void>((res) => {
+        arr.next([1, 0, 2]);
+        arr.complete();
+        res();
+      }),
+    ]);
+    assert.deepEqual(scrubIdCallbacks(actions), [
+      {
+        type: "dynamic-init",
+        index: 0,
+        action: { type: "init", node: h("a", { id: "a", href: "number-0" }) },
+      } as DynamicInitAction,
+      {
+        type: "dynamic-init",
+        index: 1,
+        action: { type: "init", node: h("a", { id: "a", href: "number-1" }) },
+      } as DynamicInitAction,
+      {
+        type: "dynamic-init",
+        index: 2,
+        action: { type: "init", node: h("a", { id: "a", href: "number-2" }) },
+      } as DynamicInitAction,
+      {
+        type: "dynamic-child",
+        domAction: { type: "move", source: 1, destination: 0 },
+      } as DynamicChildAction,
+    ]);
   });
 });

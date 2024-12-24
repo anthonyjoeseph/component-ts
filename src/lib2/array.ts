@@ -55,26 +55,23 @@ const removeChild = (relativeIndex: number, memory: InternalMemory[]) => {
 };
 
 const moveChildren = (sourceRelativeIndex: number, destinationRelativeIndex: number, memory: InternalMemory[]) => {
-  const child = memory[sourceRelativeIndex];
+  const sourceElem = memory.find((im) => im.relativeIndex === sourceRelativeIndex);
   if (destinationRelativeIndex < sourceRelativeIndex) {
     for (const memoryIndex of range(0, memory.length)) {
       const entry = memory[memoryIndex];
-      if (entry.relativeIndex >= destinationRelativeIndex && entry.relativeIndex <= sourceRelativeIndex) {
+      if (entry.relativeIndex >= destinationRelativeIndex && entry.relativeIndex < sourceRelativeIndex) {
         entry.relativeIndex++;
       }
     }
-    memory.splice(sourceRelativeIndex, 1);
-    memory.splice(destinationRelativeIndex, 0, child);
   } else {
     for (const memoryIndex of range(0, memory.length)) {
       const entry = memory[memoryIndex];
-      if (entry.relativeIndex >= sourceRelativeIndex && entry.relativeIndex <= destinationRelativeIndex) {
+      if (entry.relativeIndex > sourceRelativeIndex && entry.relativeIndex <= destinationRelativeIndex) {
         entry.relativeIndex--;
       }
     }
-    memory.splice(sourceRelativeIndex, 1);
-    memory.splice(destinationRelativeIndex - 1, 0, child);
   }
+  sourceElem.relativeIndex = destinationRelativeIndex;
 };
 
 const convertChildAction = (
@@ -171,7 +168,6 @@ const convertChildAction = (
   }
 };
 
-// return the increment to the latestPermanentId
 const recordChildAction = (action: DynamicAction, permanentId: number, memory: InternalMemory[]): void => {
   const currentEntry = memory.find((im) => im.permanentId === permanentId);
   if (action.type === "dynamic-modify" || action.type === "dynamic-child-ancestor") {
@@ -197,70 +193,121 @@ const recordChildAction = (action: DynamicAction, permanentId: number, memory: I
 export const array = (children: r.Observable<DOMAction<RxNode>>): RxDynamicNode => {
   const memory = [] as InternalMemory[];
   let latestPermanentId = 0;
-  return children.pipe(
-    r.mergeMap((action): r.Observable<DynamicAction> => {
-      if (action.type === "move") {
-        moveChildren(action.source, action.destination, memory);
-        const sourceItem = memory.find((im) => im.relativeIndex === action.source);
-        const destinationItem = memory.find((im) => im.relativeIndex === action.destination);
-        return r.of({
-          type: "dynamic-child",
-          domAction: {
-            type: "move",
-            source: getAbsoluteIndex(sourceItem.permanentId, memory),
-            destination: getAbsoluteIndex(destinationItem.permanentId, memory),
-          },
-        } as DynamicChildAction);
-      } else if (action.type === "deleteAt") {
-        const elem = memory.find((im) => im.relativeIndex === action.index);
-        elem.finish.next();
-        elem.finish.complete();
-        const index = getAbsoluteIndex(elem.permanentId, memory);
-        removeChild(action.index, memory);
-        return r.of({
-          type: "dynamic-child",
-          domAction: {
-            type: "deleteAt",
-            index,
-          },
-        } as DynamicChildAction);
-      } else if (
-        action.type === "insertAt" ||
-        action.type === "prepend" ||
-        action.type === "replaceAt" ||
-        action.type === "replaceAll"
-      ) {
-        if (action.type === "replaceAt") {
+
+  let waitingForInsert = false;
+  const backupQueue: DOMAction<RxNode>[] = [];
+  let flushQueue = new r.Subject<DOMAction<RxNode>[]>();
+  let childrenFinalized = false;
+
+  return r
+    .merge(
+      children.pipe(
+        r.finalize(() => {
+          childrenFinalized = true;
+          if (backupQueue.length === 0) {
+            flushQueue.complete();
+          }
+        })
+      ),
+      flushQueue.pipe(
+        r.mergeMap((domActions) =>
+          r.of(...domActions).pipe(
+            r.finalize(() => {
+              if (childrenFinalized && backupQueue.length === 0) {
+                flushQueue.complete();
+              }
+            })
+          )
+        )
+      )
+    )
+    .pipe(
+      r.mergeMap((action): r.Observable<DynamicAction> => {
+        if (waitingForInsert) {
+          backupQueue.push(action);
+          return r.EMPTY;
+        }
+        if (action.type === "move") {
+          const sourceItem = memory.find((im) => im.relativeIndex === action.source);
+          const destinationItem = memory.find((im) => im.relativeIndex === action.destination);
+          const source = getAbsoluteIndex(sourceItem.permanentId, memory);
+          const destination = getAbsoluteIndex(destinationItem.permanentId, memory);
+          moveChildren(action.source, action.destination, memory);
+          return r.of({
+            type: "dynamic-child",
+            domAction: { type: "move", source, destination },
+          } as DynamicChildAction);
+        } else if (action.type === "deleteAt") {
           const elem = memory.find((im) => im.relativeIndex === action.index);
           elem.finish.next();
           elem.finish.complete();
+          const index = getAbsoluteIndex(elem.permanentId, memory);
           removeChild(action.index, memory);
-        } else if (action.type === "replaceAll") {
-          memory.forEach((im) => {
-            im.finish.next();
-            im.finish.complete();
-            removeChild(im.relativeIndex, memory);
-          });
-        }
-        const initialPermanentId = latestPermanentId;
-        insertChildren("index" in action ? action.index : 0, action.items.length, memory, latestPermanentId);
-        latestPermanentId += action.items.length;
-        return r.merge(
-          ...action.items.map((childActions, childIndex) => {
-            const permanentId = initialPermanentId + childIndex;
-            return childActions.pipe(
-              r.mergeMap((childAction) => {
-                const convertedActions = convertChildAction(childAction, permanentId, memory);
-                for (const convertedAction of convertedActions) {
-                  recordChildAction(convertedAction, permanentId, memory);
-                }
-                return r.of(...convertedActions);
+          return r.of({
+            type: "dynamic-child",
+            domAction: {
+              type: "deleteAt",
+              index,
+            },
+          } as DynamicChildAction);
+        } else if (
+          action.type === "insertAt" ||
+          action.type === "prepend" ||
+          action.type === "replaceAt" ||
+          action.type === "replaceAll"
+        ) {
+          waitingForInsert = true;
+          if (action.type === "replaceAt") {
+            const elem = memory.find((im) => im.relativeIndex === action.index);
+            elem.finish.next();
+            elem.finish.complete();
+            removeChild(action.index, memory);
+          } else if (action.type === "replaceAll") {
+            memory.forEach((im) => {
+              im.finish.next();
+              im.finish.complete();
+              removeChild(im.relativeIndex, memory);
+            });
+          }
+          const initialPermanentId = latestPermanentId;
+          insertChildren("index" in action ? action.index : 0, action.items.length, memory, latestPermanentId);
+          latestPermanentId += action.items.length;
+          const asyncStart = createAsyncStart().pipe(r.map(() => "asyncStart"));
+          return r
+            .merge(
+              ...action.items.map((childActions, childIndex) => {
+                const permanentId = initialPermanentId + childIndex;
+                return childActions.pipe(
+                  r.mergeMap((childAction) => {
+                    const convertedActions = convertChildAction(childAction, permanentId, memory);
+                    for (const convertedAction of convertedActions) {
+                      recordChildAction(convertedAction, permanentId, memory);
+                    }
+                    return r.of(...convertedActions);
+                  }),
+                  r.takeUntil(memory.find((im) => im.permanentId === permanentId).finish)
+                );
               }),
-              r.takeUntil(memory.find((im) => im.permanentId === permanentId).finish)
+              asyncStart
+            )
+            .pipe(
+              r.tap((childAction) => {
+                if (typeof childAction === "string") {
+                  waitingForInsert = false;
+                  const allQueuedActions = [...backupQueue];
+                  backupQueue.splice(0, backupQueue.length);
+                  flushQueue.next(allQueuedActions);
+                }
+              }),
+              r.filter((action) => typeof action !== "string")
             );
-          })
-        );
-      }
-    })
-  );
+        }
+      }),
+      r.finalize(() => {
+        if (!flushQueue.closed) {
+          flushQueue.complete();
+        }
+        memory.forEach((im) => im.finish.complete());
+      })
+    );
 };
