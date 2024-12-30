@@ -98,8 +98,8 @@ type DeleteEffect = { type: "delete"; from: number };
 type InsertEffect = { type: "insert"; to: number; count: number };
 type ArrayEffect = KeepEffect | MoveEffect | ReplaceEffect | DeleteEffect | InsertEffect;
 export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStrict): SafeDOMAction<A>[] => {
-  if (prev.length === 0 || current.length === 0)
-    return [{ type: "replaceAll", items: current } as unknown as SafeDOMAction<A>];
+  if (prev.length === 0) return [{ type: "insertAt", index: 0, items: current } as unknown as SafeDOMAction<A>];
+  if (current.length === 0) return [{ type: "replaceAll", items: [] } as unknown as SafeDOMAction<A>];
 
   const lcs = lcsWithIndex(prev, current, eq.equals);
 
