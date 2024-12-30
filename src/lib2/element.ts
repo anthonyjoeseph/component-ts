@@ -399,7 +399,7 @@ export const element = <ElementType extends keyof HTMLElementTagNameMap>(
       mostRecentId = updateMemory(action, slot, childIds, mostRecentId);
       return toStaticAction(
         dynamicAction as DynamicModifyAction | DynamicChildAncestorAction,
-        action.type === "dynamic-child"
+        action.type === "init" || action.type === "dynamic-init" || action.type === "dynamic-child"
       );
     })
   );
