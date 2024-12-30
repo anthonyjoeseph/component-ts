@@ -212,7 +212,7 @@ describe("array", () => {
   });
 
   test("id callback", async () => {
-    let middleId = "";
+    let middleId: string | null = null;
     const node = e("div", { hidden: r.of(false) }, [
       a(
         r.of<DOMAction<RxNode>[]>({
@@ -338,7 +338,7 @@ describe("array", () => {
   });
 
   test("id callback - nested insert after init", async () => {
-    let sixthElementId = "";
+    let sixthElementId: string | null = null;
 
     const node = e("div", { hidden: r.of(false) }, [
       insert$([

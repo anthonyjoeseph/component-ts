@@ -15,7 +15,7 @@ describe("element", () => {
   });
 
   test("id callback", async () => {
-    let elementId = "";
+    let elementId: string | null = null;
     const node = e("a", { href: r.of("abcd") }, [], (id) => {
       elementId = id;
     });
@@ -25,7 +25,7 @@ describe("element", () => {
   });
 
   test("nested id callback", async () => {
-    let elementId = "";
+    let elementId: string | null = null;
     const node = e("html", {}, [
       e("div", {}),
       e("div", {}),
@@ -37,7 +37,7 @@ describe("element", () => {
   });
 
   test("delayed nested id callback", async () => {
-    let elementId = "";
+    let elementId: string | null = null;
     const node = e("html", {}, [
       e("div", {}),
       e("div", {}),

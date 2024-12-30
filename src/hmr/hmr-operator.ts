@@ -21,7 +21,7 @@ export const hmr = <A>(parentModule: NodeModule): r.MonoTypeOperatorFunction<A> 
         ([, value]) => (value as any)?.uniqueId === uniqueId
       )?.[0];
       if (exportName) {
-        currentObs = parentModule.hot.data[exportName];
+        currentObs = parentModule.hot?.data[exportName];
       }
     });
   }

@@ -12,7 +12,8 @@
     "test-watch": "tsx --test --watch",
     "test-watch-nice": "tap repl w --node-arg=--import=tsx",
     "lib2": "tsx src/lib2/index.ts",
-    "hmr-test": "parcel src/hmr/hmr.html"
+    "hmr-test": "parcel src/hmr/hmr.html",
+    "typecheck": "tsc"
   },
   "author": "",
   "license": "ISC",

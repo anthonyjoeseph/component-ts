@@ -36,7 +36,7 @@ type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x
 declare const desired: <A extends Record<string, (...a: any) => any>>(
   a: A
 ) => (...input: Parameters<A[keyof A]>) => { [K in keyof A]: ReturnType<A[K]> };
-
+/* 
 const num = (num: number) =>
   e("div", {
     style: {
@@ -68,3 +68,4 @@ export const app = e("html", {}, [
   ]),
   e("script", { src: { default: "./index.ts" } }),
 ]);
+ */

@@ -147,13 +147,13 @@ export const applyAction = <A>(array: A[], action: SafeDOMAction<A>): A[] => {
         return [
           ...array.slice(0, action.source),
           ...array.slice(action.source + 1, action.destination),
-          array[action.source],
+          array[action.source] as A,
           ...array.slice(action.destination, array.length),
         ];
       return [
         ...array.slice(0, action.destination),
         ...array.slice(action.destination + 1, action.source),
-        array[action.destination],
+        array[action.destination] as A,
         ...array.slice(action.source, array.length),
       ];
   }

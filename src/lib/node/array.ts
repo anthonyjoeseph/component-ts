@@ -21,7 +21,7 @@ type InternalMemory = {
 };
 
 const getAbsoluteIndex = (permanentId: number, memory: InternalMemory[]) => {
-  const relativeIndex = memory.find((im) => im.permanentId === permanentId).relativeIndex;
+  const relativeIndex = memory.find((im) => im.permanentId === permanentId)?.relativeIndex ?? 0;
   return sum(memory.filter((im) => im.relativeIndex < relativeIndex).map((im) => im.length));
 };
 
@@ -33,7 +33,7 @@ const insertChildren = (
 ): void => {
   for (const memoryIndex of range(0, memory.length)) {
     const entry = memory[memoryIndex];
-    if (entry.relativeIndex >= relativeIndex) {
+    if (entry && entry.relativeIndex >= relativeIndex) {
       entry.relativeIndex += numberOfChildren;
     }
   }
@@ -52,7 +52,7 @@ const removeChild = (relativeIndex: number, memory: InternalMemory[]) => {
   const currentEntry = memory[indexOfChild];
   for (const memoryIndex of range(0, memory.length)) {
     const entry = memory[memoryIndex];
-    if (entry.relativeIndex >= currentEntry.relativeIndex) {
+    if (entry && currentEntry && entry.relativeIndex >= currentEntry.relativeIndex) {
       entry.relativeIndex--;
     }
   }
@@ -64,19 +64,27 @@ const moveChildren = (sourceRelativeIndex: number, destinationRelativeIndex: num
   if (destinationRelativeIndex < sourceRelativeIndex) {
     for (const memoryIndex of range(0, memory.length)) {
       const entry = memory[memoryIndex];
-      if (entry.relativeIndex >= destinationRelativeIndex && entry.relativeIndex < sourceRelativeIndex) {
+      if (
+        entry?.relativeIndex &&
+        entry.relativeIndex >= destinationRelativeIndex &&
+        entry.relativeIndex < sourceRelativeIndex
+      ) {
         entry.relativeIndex++;
       }
     }
   } else {
     for (const memoryIndex of range(0, memory.length)) {
       const entry = memory[memoryIndex];
-      if (entry.relativeIndex > sourceRelativeIndex && entry.relativeIndex <= destinationRelativeIndex) {
+      if (
+        entry?.relativeIndex &&
+        entry.relativeIndex > sourceRelativeIndex &&
+        entry.relativeIndex <= destinationRelativeIndex
+      ) {
         entry.relativeIndex--;
       }
     }
   }
-  sourceElem.relativeIndex = destinationRelativeIndex;
+  if (sourceElem) sourceElem.relativeIndex = destinationRelativeIndex;
 };
 
 const convertChildAction = (
@@ -117,22 +125,22 @@ const convertChildAction = (
         nodes: action.nodes,
       },
     ];
-  } else if (action.type === "dynamic-child") {
+  } else {
     if (action.domAction.type === "replaceAll") {
-      const replaces = range(0, Math.min(memoryItem.length, action.domAction.items.length)).map(
+      const replaces = range(0, Math.min(memoryItem?.length ?? 0, action.domAction.items.length)).map(
         (childIndex): DynamicChildAction => ({
           type: "dynamic-child",
           idCallbacks: action.idCallbacks,
           domAction: {
             type: "replaceAt",
             index: absoluteIndex + childIndex,
-            items: [(action.domAction as { items: Element[] }).items[childIndex]],
+            items: [(action.domAction as { items: Element[] }).items[childIndex] as Element],
           },
         })
       );
       const deletes =
-        memoryItem.length > action.domAction.items.length
-          ? range(action.domAction.items.length, memoryItem.length).map(
+        (memoryItem?.length ?? 0) > action.domAction.items.length
+          ? range(action.domAction.items.length, memoryItem?.length ?? 0).map(
               (childIndex): DynamicChildAction => ({
                 type: "dynamic-child",
                 idCallbacks: action.idCallbacks,
@@ -144,15 +152,15 @@ const convertChildAction = (
             )
           : [];
       const inserts: DynamicChildAction[] =
-        memoryItem.length < action.domAction.items.length
+        (memoryItem?.length ?? 0) < action.domAction.items.length
           ? [
               {
                 type: "dynamic-child",
                 idCallbacks: action.idCallbacks,
                 domAction: {
                   type: "insertAt",
-                  index: absoluteIndex + memoryItem.length,
-                  items: action.domAction.items.slice(memoryItem.length),
+                  index: absoluteIndex + (memoryItem?.length ?? 0),
+                  items: action.domAction.items.slice(memoryItem?.length),
                 },
               },
             ]
@@ -178,7 +186,7 @@ const convertChildAction = (
           domAction: { ...action.domAction, index: absoluteIndex + action.domAction.index },
         },
       ];
-    } else if (action.domAction.type === "move") {
+    } else {
       return [
         {
           type: "dynamic-child",
@@ -197,10 +205,10 @@ const convertChildAction = (
 const recordChildAction = (action: DynamicAction, permanentId: number, memory: InternalMemory[]): void => {
   const currentEntry = memory.find((im) => im.permanentId === permanentId);
   if (action.type === "dynamic-modify" || action.type === "dynamic-child-ancestor") {
-  } else if (action.type === "dynamic-init") {
+  } else if (currentEntry && action.type === "dynamic-init") {
     currentEntry.length += action.nodes.length;
     currentEntry.idCallbacks = action.idCallbacks.flat();
-  } else if (action.type === "dynamic-child") {
+  } else if (currentEntry && action.type === "dynamic-child") {
     if (action.domAction.type === "deleteAt") {
       currentEntry.length -= 1;
     } else if (action.domAction.type === "replaceAt") {
@@ -237,7 +245,7 @@ const applyInsertActionToInit = (initAction: MergedInits[], newAction: DynamicAc
     const newInits = newAction.idCallbacks.map(
       (idCallbacks, index): MergedInits => ({
         idCallbacks,
-        node: newAction.nodes[index],
+        node: newAction.nodes[index] as Element,
       })
     );
     if (newAction.index < allInits.length - 1) {
@@ -247,10 +255,13 @@ const applyInsertActionToInit = (initAction: MergedInits[], newAction: DynamicAc
       allInits.push(...nulls, ...newInits);
     }
   } else if (newAction.type === "dynamic-modify") {
-    allInits[newAction.index].node = {
-      ...allInits[newAction.index].node,
-      properties: { ...allInits[newAction.index].node.properties, ...newAction.action.property },
-    };
+    const currentInit = allInits[newAction.index];
+    if (currentInit) {
+      currentInit.node = {
+        ...currentInit.node,
+        properties: { ...currentInit.node.properties, ...newAction.action.property },
+      };
+    }
   } else if (newAction.type === "dynamic-child-ancestor") {
     // do nothing
   } else if (newAction.type === "dynamic-child") {
@@ -259,18 +270,18 @@ const applyInsertActionToInit = (initAction: MergedInits[], newAction: DynamicAc
       const destination = newAction.domAction.destination;
       const sourceNode = allInits[source];
       if (source < destination) {
-        allInits.splice(destination, 0, sourceNode);
+        allInits.splice(destination, 0, sourceNode as MergedInits);
         allInits.splice(source, 1);
       } else {
         allInits.splice(newAction.domAction.source, 1);
-        allInits.splice(newAction.domAction.destination, 0, sourceNode);
+        allInits.splice(newAction.domAction.destination, 0, sourceNode as MergedInits);
       }
     } else if (newAction.domAction.type === "replaceAll") {
       const items = newAction.domAction.items;
       const newInits = newAction.idCallbacks.map(
         (idCallbacks, index): MergedInits => ({
           idCallbacks,
-          node: items[index],
+          node: items[index] as Element,
         })
       );
       allInits.splice(0, allInits.length, ...newInits);
@@ -282,7 +293,7 @@ const applyInsertActionToInit = (initAction: MergedInits[], newAction: DynamicAc
       const newInits = newAction.idCallbacks.map(
         (idCallbacks, index): MergedInits => ({
           idCallbacks,
-          node: items[index],
+          node: items[index] as Element,
         })
       );
       const replaceIndex = newAction.domAction.index;
@@ -292,7 +303,7 @@ const applyInsertActionToInit = (initAction: MergedInits[], newAction: DynamicAc
       const newInits = newAction.idCallbacks.map(
         (idCallbacks, index): MergedInits => ({
           idCallbacks,
-          node: items[index],
+          node: items[index] as Element,
         })
       );
       const insertIndex = newAction.domAction.index;
@@ -303,7 +314,7 @@ const applyInsertActionToInit = (initAction: MergedInits[], newAction: DynamicAc
       const newInits = newAction.idCallbacks.map(
         (idCallbacks, index): MergedInits => ({
           idCallbacks,
-          node: items[index],
+          node: items[index] as Element,
         })
       );
       allInits.splice(0, 0, ...newInits);
@@ -393,8 +404,8 @@ export const array = (children: r.Observable<DOMAction<RxNode>>): RxDynamicNode 
         if (action.type === "move") {
           const sourceItem = memory.find((im) => im.relativeIndex === action.source);
           const destinationItem = memory.find((im) => im.relativeIndex === action.destination);
-          const source = getAbsoluteIndex(sourceItem.permanentId, memory);
-          const destination = getAbsoluteIndex(destinationItem.permanentId, memory);
+          const source = getAbsoluteIndex(sourceItem?.permanentId as number, memory);
+          const destination = getAbsoluteIndex(destinationItem?.permanentId as number, memory);
           moveChildren(action.source, action.destination, memory);
           return r.of({
             type: "dynamic-child",
@@ -402,30 +413,25 @@ export const array = (children: r.Observable<DOMAction<RxNode>>): RxDynamicNode 
           } as DynamicChildAction);
         } else if (action.type === "deleteAt") {
           const elem = memory.find((im) => im.relativeIndex === action.index);
-          elem.finish.next();
-          elem.finish.complete();
-          const index = getAbsoluteIndex(elem.permanentId, memory);
+          elem?.finish.next();
+          elem?.finish.complete();
+          const index = getAbsoluteIndex(elem?.permanentId as number, memory);
           removeChild(action.index, memory);
           return r.of({
             type: "dynamic-child",
-            idCallbacks: [elem.idCallbacks],
+            idCallbacks: elem ? [elem.idCallbacks] : [],
             domAction: {
               type: "deleteAt",
               index,
             },
           } as DynamicChildAction);
-        } else if (
-          action.type === "insertAt" ||
-          action.type === "prepend" ||
-          action.type === "replaceAt" ||
-          action.type === "replaceAll"
-        ) {
+        } else {
           waitingForInsert = true;
           const batchedSyncActions: DynamicAction[] = [];
           if (action.type === "replaceAt") {
             const elem = memory.find((im) => im.relativeIndex === action.index);
-            elem.finish.next();
-            elem.finish.complete();
+            elem?.finish.next();
+            elem?.finish.complete();
             removeChild(action.index, memory);
           } else if (action.type === "replaceAll") {
             memory.forEach((im) => {
@@ -454,7 +460,7 @@ export const array = (children: r.Observable<DOMAction<RxNode>>): RxDynamicNode 
                     }
                     return r.of(...convertedActions);
                   }),
-                  r.takeUntil(memory.find((im) => im.permanentId === permanentId).finish)
+                  r.takeUntil(memory.find((im) => im.permanentId === permanentId)?.finish ?? r.of())
                 );
               }),
               asyncStart

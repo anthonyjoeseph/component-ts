@@ -1,5 +1,5 @@
 {
-  "compilerOptionss": {
+  "compilerOptions": {
     "target": "ESNEXT",
     "module": "commonjs",
     "jsx": "preserve",

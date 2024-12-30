@@ -16,7 +16,7 @@ const obs = r
     r.map(String),
     r.tap((num) => {
       const node = document.getElementById("main");
-      node.innerText = num;
+      if (node) node.innerText = num;
     })
   );
 obs.subscribe();

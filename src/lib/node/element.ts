@@ -42,7 +42,7 @@ const applyActionToNode = (
     } else if (a.domAction.type === "deleteAt") {
       children.splice(a.domAction.index, 1);
     } else if (a.domAction.type === "move") {
-      const child = children[a.domAction.source];
+      const child = children[a.domAction.source] as ElementContent;
       if (a.domAction.destination < a.domAction.source) {
         children.splice(a.domAction.source, 1);
         children.splice(a.domAction.destination, 0, child);
@@ -83,7 +83,7 @@ const addIdAndIndex = (
           })),
         ],
         domAction: {
-          type: childIds[slot].length > 0 ? "replaceAt" : "insertAt",
+          type: (childIds[slot]?.length ?? 0) > 0 ? "replaceAt" : "insertAt",
           index: 0,
           items: [
             {
@@ -161,7 +161,7 @@ const addIdAndIndex = (
       index: currentIndex(slot, childIds),
       action: {
         type: "modify",
-        id: `${parentId}-${childIds[slot][0]}${action.id}`,
+        id: `${parentId}-${childIds[slot]?.[0]}${action.id}`,
         property: action.property,
       },
     };
@@ -171,12 +171,12 @@ const addIdAndIndex = (
       index: currentIndex(slot, childIds) + action.index,
       action: {
         type: "modify",
-        id: `${parentId}-${childIds[slot][action.index]}${action.action.id}`,
+        id: `${parentId}-${childIds[slot]?.[action.index]}${action.action.id}`,
         property: action.action.property,
       },
     };
   } else if (action.type === "child" || action.type === "dynamic-child-ancestor") {
-    const currentId = childIds[slot]["index" in action ? action.index : 0];
+    const currentId = childIds[slot]?.["index" in action ? action.index : 0] ?? 0;
     return {
       type: "dynamic-child-ancestor",
       targetId: `${parentId}-${currentId}${action.targetId}`,
@@ -300,39 +300,39 @@ const updateMemory = (
     newMostRecentId += action.nodes.length;
   } else if (action.type === "dynamic-child") {
     if (action.domAction.type === "move") {
-      const id = childIds[slot][action.domAction.source];
+      const id = childIds[slot]?.[action.domAction.source] ?? 0;
       if (action.domAction.destination < action.domAction.source) {
-        childIds[slot].splice(action.domAction.source, 1);
-        childIds[slot].splice(action.domAction.destination, 0, id);
+        childIds[slot]?.splice(action.domAction.source, 1);
+        childIds[slot]?.splice(action.domAction.destination, 0, id);
       } else {
-        childIds[slot].splice(action.domAction.source, 1);
-        childIds[slot].splice(action.domAction.destination - 1, 0, id);
+        childIds[slot]?.splice(action.domAction.source, 1);
+        childIds[slot]?.splice(action.domAction.destination - 1, 0, id);
       }
     } else if (action.domAction.type === "insertAt") {
-      childIds[slot].splice(
+      childIds[slot]?.splice(
         action.domAction.index,
         0,
         ...action.domAction.items.map((_, index) => mostRecentId + index)
       );
       newMostRecentId = mostRecentId + action.domAction.items.length;
     } else if (action.domAction.type === "replaceAt") {
-      childIds[slot].splice(
+      childIds[slot]?.splice(
         action.domAction.index,
         action.domAction.items.length,
         ...action.domAction.items.map((_, index) => mostRecentId + index)
       );
       newMostRecentId = mostRecentId + action.domAction.items.length;
     } else if (action.domAction.type === "deleteAt") {
-      childIds[slot].splice(action.domAction.index, 1);
+      childIds[slot]?.splice(action.domAction.index, 1);
     } else if (action.domAction.type === "replaceAll") {
-      childIds[slot].splice(
+      childIds[slot]?.splice(
         0,
         childIds[slot].length,
         ...action.domAction.items.map((_, index) => mostRecentId + index)
       );
       newMostRecentId = mostRecentId + action.domAction.items.length;
     } else if (action.domAction.type === "prepend") {
-      childIds[slot].splice(
+      childIds[slot]?.splice(
         0,
         action.domAction.items.length,
         ...action.domAction.items.map((_, index) => mostRecentId + index)

@@ -14,8 +14,8 @@ export const arrayDiffOrd = <A>(prev: SortedArray<A>, current: SortedArray<A>, o
   let prevWasEquals = false;
   const actions: DOMAction<A>[] = [];
   while (prevIndex < prev.length && currentIndex < current.length) {
-    const prevItem = prev[prevIndex];
-    const currentItem = current[currentIndex];
+    const prevItem = prev[prevIndex] as A;
+    const currentItem = current[currentIndex] as A;
     const comparison = ord.compare(prevItem, currentItem);
     if (comparison === -1) {
       actions.push({ type: "deleteAt", index: currentIndex });
@@ -70,7 +70,7 @@ export const lcsWithIndex = <T, U = T>(
   bestSubSequence(a, b, compareFunc, (type, oldArr, oldStart, oldEnd, _, newStart) => {
     if (type === "same") {
       for (let i = 0; i < oldEnd - oldStart; ++i) {
-        ret.push({ val: oldArr[i + oldStart], oldIndex: i + oldStart, newIndex: i + newStart });
+        ret.push({ val: oldArr[i + oldStart] as T, oldIndex: i + oldStart, newIndex: i + newStart });
       }
     }
   });
@@ -80,7 +80,7 @@ export const lcsWithIndex = <T, U = T>(
 const findIndexAtOccurrence = <A>(arr: A[], occurrence: number, fn: (val: A) => boolean): number => {
   let occurCount = 0;
   for (let i = 0; i < arr.length; i++) {
-    if (fn(arr[i])) {
+    if (fn(arr[i] as A)) {
       if (occurCount === occurrence) {
         return i;
       } else {
@@ -160,14 +160,14 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   let latestKeep = -1;
   let numInsertsSinceKeep = 0;
   for (let i = 0; i < currentEffects.length; i++) {
-    const currentEffect = currentEffects[i];
+    const currentEffect = currentEffects[i] as ArrayEffect;
     if (currentEffect.type === "keep") {
       latestKeep++;
       numInsertsSinceKeep = 0;
     } else if (currentEffect.type === "insert") {
       // find an equivalent element that was marked for deletion
       const fromIndex = prevEffects.findIndex(
-        (val): val is DeleteEffect => val.type === "delete" && eq.equals(prev[val.from], current[i])
+        (val): val is DeleteEffect => val.type === "delete" && eq.equals(prev[val.from] as A, current[i] as A)
       );
       if (fromIndex >= 0) {
         // insert after the most recent keep
@@ -191,7 +191,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   // so that "keep.to" fields are still correct (we use them in the next section)
   let streakStart: number | undefined;
   for (let i = 0; i < currentEffects.length; i++) {
-    if (currentEffects[i].type === "insert") {
+    if (currentEffects[i]?.type === "insert") {
       if (streakStart === undefined) {
         streakStart = i;
       } else {
@@ -211,9 +211,9 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
       (prevEffect, i): prevEffect is DeleteEffect =>
         0 < i &&
         i < prevEffects.length - 1 &&
-        prevEffects[i - 1].type === "keep" &&
+        prevEffects[i - 1]?.type === "keep" &&
         prevEffect.type === "delete" &&
-        prevEffects[i + 1].type === "keep"
+        prevEffects[i + 1]?.type === "keep"
     )
     .map((val) => ({
       val,
@@ -223,7 +223,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   for (const { val, prevKeep, nextKeep } of eligibleDeletes) {
     let biggestInsert: { val: InsertEffect; to: number } | undefined;
     for (let to = prevKeep.to; to < nextKeep.to; to++) {
-      const currentEffect = currentEffects[to];
+      const currentEffect = currentEffects[to] as ArrayEffect;
       if (currentEffect.type === "insert" && (!biggestInsert || currentEffect.count > biggestInsert.val.count)) {
         biggestInsert = { val: currentEffect, to };
       }
@@ -263,7 +263,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   let currentSegmentLength = 1;
   let numPrevDeletes = 0;
   for (let i = 0; i < prevEffects.length; i++) {
-    const currentEffect = prevEffects[i];
+    const currentEffect = prevEffects[i] as ArrayEffect;
     if (currentEffect.type === "delete") {
       domActions.push({
         type: "deleteAt",
@@ -273,7 +273,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
       bumpMoveSources(i, -1);
       bumpMoveDestinations(i, -1);
     }
-    if (prevEffects[i].type === "keep") {
+    if (prevEffects[i]?.type === "keep") {
       keepSegmentLength.push(currentSegmentLength);
       currentSegmentLength = 1;
     } else {
@@ -287,7 +287,7 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   for (const currentEffect of currentEffects) {
     if (currentEffect.type === "keep") {
       whichKeep++;
-      latestInsert += keepSegmentLength[whichKeep];
+      latestInsert += keepSegmentLength[whichKeep] as number;
       continue;
     }
     if (currentEffect.type === "insert") {
@@ -316,8 +316,8 @@ export const arrayDiffEq = <A>(prev: A[], current: A[], eq: Eq.Eq<A> = Eq.eqStri
   }
   // move
   for (let moveIndex = 0; moveIndex < moveSources.length; moveIndex++) {
-    const { prevKeep, skipInserts } = moveDestinations[moveIndex];
-    const source = moveSources[moveIndex];
+    const { prevKeep, skipInserts } = moveDestinations[moveIndex] as { prevKeep: number; skipInserts: number };
+    const source = moveSources[moveIndex] as number;
     const destination = prevKeep + skipInserts;
     domActions.push({ type: "move", source, destination });
 
