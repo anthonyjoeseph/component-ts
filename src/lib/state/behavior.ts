@@ -3,8 +3,8 @@ import * as ro from "rxjs/operators";
 import * as Eq from "fp-ts/Eq";
 
 import BS = r.BehaviorSubject;
-import { applyAction, SafeDOMAction } from "./array/domAction";
-import { arrayDiffEq } from "./array/diff";
+import { applyAction, SafeDOMAction } from "../array/domAction";
+import { arrayDiffEq } from "../array/diff";
 
 export type BehaviorSubjectLike<A> = r.Observable<A> & {
   getValue: () => A;

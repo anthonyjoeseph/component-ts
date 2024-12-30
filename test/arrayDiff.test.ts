@@ -2,8 +2,8 @@ import * as fc from "fast-check";
 import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
 import { Ord as ordNumber } from "fp-ts/number";
-import { arrayDiffEq, arrayDiffOrd } from "../src/lib/state/array/diff";
-import { applyAction } from "../src/lib/state/array/domAction";
+import { arrayDiffEq, arrayDiffOrd } from "../src/lib/array/diff";
+import { applyAction } from "../src/lib/array/domAction";
 
 describe("array diff", () => {
   test("unordered", () => {

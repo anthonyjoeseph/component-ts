@@ -1,8 +1,8 @@
 import * as r from "rxjs";
 import * as ro from "rxjs/operators";
-import { component as c } from "./lib/component/component";
-import { applyNext, arrayEq, getValue } from "./lib/state/behavior";
-import { mapDomAction } from "./lib/state/array/domAction";
+import { element as e } from "../lib/node/element";
+import { applyNext, arrayEq, getValue } from "../lib/state/behavior";
+import { mapDomAction } from "../lib/array/domAction";
 import { pipe } from "fp-ts/function";
 import * as R from "fp-ts/Record";
 
@@ -38,7 +38,7 @@ declare const desired: <A extends Record<string, (...a: any) => any>>(
 ) => (...input: Parameters<A[keyof A]>) => { [K in keyof A]: ReturnType<A[K]> };
 
 const num = (num: number) =>
-  c("div", {
+  e("div", {
     style: {
       default:
         `margin-right: 10px; display:flex; justify-content:center; align-items: center; width: 100px; height:100px; background-color:${rainbow[num % rainbow.length]}` as unknown as CSSStyleDeclaration,
@@ -46,15 +46,15 @@ const num = (num: number) =>
     innerText: { default: String(num) },
   });
 
-export const app = c("html", {}, [
-  c("div", {}, [
-    c("input", {
+export const app = e("html", {}, [
+  e("div", {}, [
+    e("input", {
       type: { default: "text" },
       getId: applyNext(inputId),
     }),
-    c("button", { innerText: { default: "render" }, onclick: () => arr.next(JSON.parse(inputVal() ?? "[]")) }),
-    c("button", { innerText: { default: "prepend" }, onclick: () => prepend.next(777) }),
-    c("div", {
+    e("button", { innerText: { default: "render" }, onclick: () => arr.next(JSON.parse(inputVal() ?? "[]")) }),
+    e("button", { innerText: { default: "prepend" }, onclick: () => prepend.next(777) }),
+    e("div", {
       style: {
         default: "display:flex; flex-direction:row;" as unknown as CSSStyleDeclaration,
       },
@@ -66,5 +66,5 @@ export const app = c("html", {}, [
       ),
     }),
   ]),
-  c("script", { src: { default: "./index.ts" } }),
+  e("script", { src: { default: "./index.ts" } }),
 ]);

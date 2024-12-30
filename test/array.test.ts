@@ -8,19 +8,19 @@ import {
   DynamicChildAction,
   InitAction,
   ChildAction,
-} from "./element";
-import { array as a } from "./array";
+} from "../src/lib/node/element";
+import { array as a } from "../src/lib/node/array";
 import { h } from "hastscript";
 import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
-import { DOMAction } from "../lib/state/array/domAction";
+import { DOMAction } from "../src/lib/array/domAction";
 import { scrubIdCallbacks } from "./test-util";
 
 const insert = (items: RxNode[], index = 0): DOMAction<RxNode> => ({ type: "insertAt", items, index });
 const insert$ = (items: RxNode[], index = 0): RxNode => a(r.of(insert(items, index)));
 
 describe("array", () => {
-  test.skip("insertAt single", async () => {
+  test("insertAt single", async () => {
     const node = a(
       r.of({
         type: "insertAt",
@@ -38,7 +38,7 @@ describe("array", () => {
     ]);
   });
 
-  test.skip("insertAt many", async () => {
+  test("insertAt many", async () => {
     const node = a(
       r.of({
         type: "insertAt",
@@ -60,7 +60,7 @@ describe("array", () => {
     ]);
   });
 
-  test.skip("insertAt many - modify", async () => {
+  test("insertAt many - modify", async () => {
     const node = a(
       r.of({
         type: "insertAt",
@@ -91,7 +91,7 @@ describe("array", () => {
     ]);
   });
 
-  test.skip("deleteAt", async () => {
+  test("deleteAt", async () => {
     let deleted1 = false;
     let deleted2 = false;
     const node = a(
@@ -159,7 +159,7 @@ describe("array", () => {
     assert.equal(deleted2, true);
   });
 
-  test.skip("move", async () => {
+  test("move", async () => {
     const node = a(
       r.of<DOMAction<RxNode>[]>(
         {
@@ -188,7 +188,7 @@ describe("array", () => {
     ]);
   });
 
-  test.skip("id within element", async () => {
+  test("id within element", async () => {
     const node = e("div", { hidden: r.of(false) }, [
       a(
         r.of<DOMAction<RxNode>[]>({
@@ -211,7 +211,7 @@ describe("array", () => {
     ]);
   });
 
-  test.skip("id callback", async () => {
+  test("id callback", async () => {
     let middleId = "";
     const node = e("div", { hidden: r.of(false) }, [
       a(
@@ -235,7 +235,7 @@ describe("array", () => {
     assert.equal(middleId, "div-1a");
   });
 
-  test.skip("id within element - insert after init", async () => {
+  test("id within element - insert after init", async () => {
     const node = e("div", { hidden: r.of(false) }, [
       a(
         r.of<DOMAction<RxNode>[]>(
@@ -274,7 +274,7 @@ describe("array", () => {
     ]);
   });
 
-  test.skip("id within element - nested insert", async () => {
+  test("id within element - nested insert", async () => {
     const node = e("div", { hidden: r.of(false) }, [
       insert$([
         e("a", { href: r.of("abcd") }),
@@ -301,7 +301,7 @@ describe("array", () => {
     ]);
   });
 
-  test.skip("id within element - nested insert after init", async () => {
+  test("id within element - nested insert after init", async () => {
     const node = e("div", { hidden: r.of(false) }, [
       insert$([
         e("a", { href: r.of("abcd") }),
@@ -337,7 +337,7 @@ describe("array", () => {
     ]);
   });
 
-  test.skip("id callback - nested insert after init", async () => {
+  test("id callback - nested insert after init", async () => {
     let sixthElementId = "";
 
     const node = e("div", { hidden: r.of(false) }, [

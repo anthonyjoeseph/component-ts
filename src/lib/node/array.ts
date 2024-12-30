@@ -1,5 +1,5 @@
 import * as r from "rxjs";
-import { DOMAction } from "../lib/state/array/domAction";
+import { DOMAction } from "../array/domAction";
 import {
   RxDynamicNode,
   RxNode,

@@ -1,5 +1,5 @@
 import * as r from "rxjs";
-import { StaticAction, element as e, InitAction, ModifyAction, ChildAction, RxNode } from "./element";
+import { StaticAction, element as e, InitAction, ModifyAction, ChildAction, RxNode } from "../src/lib/node/element";
 import { h } from "hastscript";
 import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
@@ -20,7 +20,7 @@ describe("element", () => {
       elementId = id;
     });
     const initAction = (await r.firstValueFrom(node)) as InitAction;
-    initAction.idCallback("");
+    initAction.idCallbacks.forEach(({ id, idCallback }) => idCallback(id));
     assert.deepEqual(elementId, "a");
   });
 
@@ -32,7 +32,7 @@ describe("element", () => {
       e("div", {}, [e("a", {}), e("a", {}, [], (id) => (elementId = id)), e("a", {})]),
     ]);
     const initAction = (await r.firstValueFrom(node)) as InitAction;
-    initAction.idCallback("");
+    initAction.idCallbacks.forEach(({ id, idCallback }) => idCallback(id));
     assert.deepEqual(elementId, "html-2div-1a");
   });
 
@@ -44,7 +44,7 @@ describe("element", () => {
       e("div", {}, [e("a", {}), e("a", {}, [], (id) => (elementId = id)).pipe(r.delay(0)), e("a", {})]),
     ]).pipe(r.toArray());
     const [, insertAction] = (await r.firstValueFrom(node)) as [InitAction, ChildAction];
-    insertAction.idCallback("");
+    insertAction.idCallbacks.forEach(({ id, idCallback }) => idCallback(id));
     assert.deepEqual(elementId, "html-2div-2a");
   });
 

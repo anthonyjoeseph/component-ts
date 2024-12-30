@@ -1,5 +1,5 @@
 import * as r from "rxjs";
-import { createAsyncStart } from "./util";
+import { createAsyncStart } from "../src/lib/node/util";
 import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
 

@@ -1,6 +1,6 @@
 import type { Element, ElementContent, Text, Comment, Properties } from "hast";
 import { h, s } from "hastscript";
-import { DOMAction } from "../lib/state/array/domAction";
+import { DOMAction } from "../array/domAction";
 import type { Observable } from "rxjs";
 import * as r from "rxjs";
 import { createAsyncStart, range } from "./util";
@@ -185,13 +185,13 @@ const addIdAndIndex = (
         action.type === "dynamic-child-ancestor"
           ? action.idCallbacks.map((itemCallbacks, childIndex) =>
               itemCallbacks.map(({ idCallback, id: childId }) => ({
-                id: `${parentId}-${mostRecentId + childIndex}${childId}`,
+                id: `${parentId}-${currentId + childIndex}${childId}`,
                 idCallback,
               }))
             )
           : [
               action.idCallbacks.map(({ idCallback, id: childId }) => ({
-                id: `${parentId}-${mostRecentId}${childId}`,
+                id: `${parentId}-${currentId}${childId}`,
                 idCallback,
               })),
             ],

@@ -1,4 +1,4 @@
-import { DynamicAction, DynamicInitAction, StaticAction } from "./element";
+import { DynamicAction, DynamicInitAction, StaticAction } from "../src/lib/node/element";
 
 export const scrubIdCallbacks = (actions: (StaticAction | DynamicAction)[]): (StaticAction | DynamicAction)[] =>
   actions.map((action) => {

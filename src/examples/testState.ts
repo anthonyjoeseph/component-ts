@@ -1,4 +1,4 @@
-import * as B from "./lib/state/behavior";
+import * as B from "../lib/state/behavior";
 
 const root = {
   ...B.keysFromDefault({
