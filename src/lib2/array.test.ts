@@ -220,19 +220,9 @@ describe("array", () => {
           index: 0,
           items: [
             e("a", { href: r.of("abcd") }),
-            e(
-              "a",
-              { href: r.of("1234") },
-              [],
-              [
-                {
-                  id: "",
-                  idCallback: (id) => {
-                    middleId = id;
-                  },
-                },
-              ]
-            ),
+            e("a", { href: r.of("1234") }, [], (id) => {
+              middleId = id;
+            }),
             e("a", { href: r.of("!@#$") }),
           ],
         })
@@ -360,19 +350,9 @@ describe("array", () => {
               insert([e("a", { href: r.of("!@#$") })]),
               insert(
                 [
-                  e(
-                    "a",
-                    { href: r.of("wxyz") },
-                    [],
-                    [
-                      {
-                        id: "",
-                        idCallback: (id) => {
-                          sixthElementId = id;
-                        },
-                      },
-                    ]
-                  ),
+                  e("a", { href: r.of("wxyz") }, [], (id) => {
+                    sixthElementId = id;
+                  }),
                 ],
                 1
               )

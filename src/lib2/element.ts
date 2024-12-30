@@ -257,14 +257,18 @@ const addIdAndIndex = (
   }
 };
 
-const toStaticAction = (action: DynamicModifyAction | DynamicChildAncestorAction): StaticAction =>
+const toStaticAction = (
+  action: DynamicModifyAction | DynamicChildAncestorAction,
+  affectsOwnChildren: boolean
+): StaticAction =>
   action.type === "dynamic-modify"
     ? action.action
     : {
         type: "child",
         targetId: action.targetId ?? "",
-        domAction:
-          "index" in action.domAction
+        domAction: !affectsOwnChildren
+          ? action.domAction
+          : "index" in action.domAction
             ? {
                 ...action.domAction,
                 index: action.domAction.index + action.index,
@@ -347,7 +351,7 @@ export const element = <ElementType extends keyof HTMLElementTagNameMap>(
       : K]?: Observable<HTMLElementTagNameMap[ElementType][K]>;
   },
   children: RxNode[] = [],
-  idCallback: IdCallbacks = []
+  idCallback?: (id: string | null) => void
 ): RxStaticNode => {
   const asyncStart = createAsyncStart();
 
@@ -380,7 +384,7 @@ export const element = <ElementType extends keyof HTMLElementTagNameMap>(
         initAction: {
           type: "init",
           node: h(selector, { id: selector }),
-          idCallbacks: idCallback.map(({ idCallback }) => ({ idCallback, id: selector })),
+          idCallbacks: idCallback ? [{ id: selector, idCallback }] : [],
         } as InitAction,
         asyncStart: false,
         asyncAction: undefined as ModifyAction | readonly [DynamicAction | StaticAction, number] | undefined,
@@ -393,7 +397,10 @@ export const element = <ElementType extends keyof HTMLElementTagNameMap>(
       const [action, slot] = asyncAction;
       const dynamicAction = addIdAndIndex(selector, slot, action, childIds, mostRecentId, true);
       mostRecentId = updateMemory(action, slot, childIds, mostRecentId);
-      return toStaticAction(dynamicAction as DynamicModifyAction | DynamicChildAncestorAction);
+      return toStaticAction(
+        dynamicAction as DynamicModifyAction | DynamicChildAncestorAction,
+        action.type === "dynamic-child"
+      );
     })
   );
   return initAction;
