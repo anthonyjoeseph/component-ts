@@ -62,7 +62,7 @@
       "runtimeArgs": [
         "--test"
       ],
-      "program": "src/lib2/element.test.ts",
+      "program": "test/text.test.ts",
       "cwd": "${workspaceRoot}",
       "internalConsoleOptions": "openOnSessionStart",
       "skipFiles": [

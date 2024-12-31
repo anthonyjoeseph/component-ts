@@ -9,7 +9,7 @@ import {
   DynamicInitAction,
   IdCallbacks,
 } from "./element";
-import { Element } from "hast";
+import { Element, Text } from "hast";
 import { createAsyncStart, range, sum } from "./util";
 
 type InternalMemory = {
@@ -233,7 +233,7 @@ const recordChildAction = (action: DynamicAction, permanentId: number, memory: I
 };
 
 type MergedInits = {
-  node: Element;
+  node: Element | Text;
   idCallbacks: IdCallbacks;
 } | null;
 
@@ -257,10 +257,13 @@ const applyInsertActionToInit = (initAction: MergedInits[], newAction: DynamicAc
   } else if (newAction.type === "dynamic-modify") {
     const currentInit = allInits[newAction.index];
     if (currentInit) {
-      currentInit.node = {
-        ...currentInit.node,
-        properties: { ...currentInit.node.properties, ...newAction.action.property },
-      };
+      currentInit.node =
+        currentInit.node.type === "text"
+          ? currentInit.node
+          : {
+              ...currentInit.node,
+              properties: { ...currentInit.node.properties, ...newAction.action.property },
+            };
     }
   } else if (newAction.type === "dynamic-child-ancestor") {
     // do nothing
@@ -345,7 +348,7 @@ const mergeInsertActions = (actions: DynamicAction[]): DynamicInitAction[] => {
         {
           type: "dynamic-init",
           index,
-          idCallbacks: [cur.idCallbacks],
+          idCallbacks: cur.node.type === "text" ? [] : [cur.idCallbacks],
           nodes: [cur.node],
         },
       ] as DynamicInitAction[];
@@ -355,7 +358,8 @@ const mergeInsertActions = (actions: DynamicAction[]): DynamicInitAction[] => {
       {
         type: "dynamic-init",
         index: mostRecentInit.index,
-        idCallbacks: [...mostRecentInit.idCallbacks, cur.idCallbacks],
+        idCallbacks:
+          cur.node.type === "text" ? mostRecentInit.idCallbacks : [...mostRecentInit.idCallbacks, cur.idCallbacks],
         nodes: [...mostRecentInit.nodes, cur.node],
       },
     ] as DynamicInitAction[];
