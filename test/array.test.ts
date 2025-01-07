@@ -1,20 +1,19 @@
 import * as r from "rxjs";
-import {
-  element as e,
-  RxNode,
-  DynamicAction,
-  DynamicInitAction,
-  DynamicModifyAction,
-  DynamicChildAction,
-  InitAction,
-  ChildAction,
-} from "../src/lib/node/element";
+import { element as e } from "../src/lib/node/element";
 import { array as a } from "../src/lib/node/array";
 import { h } from "hastscript";
 import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
 import { DOMAction } from "../src/lib/array/domAction";
 import { scrubIdCallbacks } from "./test-util";
+import {
+  RxNode,
+  DynamicInitAction,
+  DynamicModifyAction,
+  DynamicChildAction,
+  InitAction,
+  ChildAction,
+} from "../src/lib/node/actions";
 
 const insert = (items: RxNode[], index = 0): DOMAction<RxNode> => ({ type: "insertAt", items, index });
 const insert$ = (items: RxNode[], index = 0): RxNode => a(r.of(insert(items, index)));

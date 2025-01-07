@@ -71,12 +71,12 @@
       ]
     },
     {
-      "name": "Debug index",
+      "name": "Debug experiment",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "tsx",
       "runtimeArgs": [],
-      "program": "src/lib2/index.ts",
+      "program": "src/lib/node/experiment.ts",
       "cwd": "${workspaceRoot}",
       "internalConsoleOptions": "openOnSessionStart",
       "skipFiles": [

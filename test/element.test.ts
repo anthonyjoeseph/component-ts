@@ -1,9 +1,10 @@
 import * as r from "rxjs";
-import { StaticAction, element as e, InitAction, ModifyAction, ChildAction, RxNode } from "../src/lib/node/element";
+import { element as e } from "../src/lib/node/element";
 import { h } from "hastscript";
 import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
 import { scrubIdCallbacks } from "./test-util";
+import { InitAction, ChildAction, ModifyAction } from "../src/lib/node/actions";
 
 describe("element", () => {
   test("has properties", async () => {

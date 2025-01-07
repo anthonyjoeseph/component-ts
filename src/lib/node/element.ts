@@ -1,9 +1,20 @@
 import type { Element, Text, ElementContent, Properties } from "hast";
-import { h, s } from "hastscript";
+import { h } from "hastscript";
 import { DOMAction } from "../array/domAction";
 import type { Observable } from "rxjs";
 import * as r from "rxjs";
 import { createAsyncStart, range } from "./util";
+import {
+  DynamicAction,
+  DynamicChildAncestorAction,
+  DynamicInitAction,
+  DynamicModifyAction,
+  InitAction,
+  ModifyAction,
+  RxNode,
+  RxStaticNode,
+  StaticAction,
+} from "./actions";
 
 export const isDynamic = (a: DynamicAction | StaticAction): a is DynamicAction =>
   a.type === "dynamic-child" || a.type === "dynamic-init" || a.type === "dynamic-modify";
@@ -141,11 +152,12 @@ const addIdAndIndex = (
         type: "dynamic-child-ancestor",
         index: currentIndex(slot, childIds),
         targetId: parentId,
-        idCallbacks: action.idCallbacks.map((itemCallbacks, childIndex) =>
-          itemCallbacks.map(({ idCallback, id: childId }) => ({
-            id: `${parentId}-${mostRecentId + childIndex}${childId}`,
-            idCallback,
-          }))
+        idCallbacks: withChildIndex(action.nodes).map(
+          ([, childIndex], realIndex) =>
+            action.idCallbacks[realIndex]?.map(({ idCallback, id: childId }) => ({
+              id: `${parentId}-${mostRecentId + childIndex}${childId}`,
+              idCallback,
+            })) ?? []
         ),
         domAction: {
           type: "insertAt",
@@ -167,11 +179,12 @@ const addIdAndIndex = (
     return {
       type: "dynamic-init",
       index: currentIndex(slot, childIds) + action.index,
-      idCallbacks: action.idCallbacks.map((itemCallbacks, childIndex) =>
-        itemCallbacks.map(({ idCallback, id: childId }) => ({
-          id: `${parentId}-${mostRecentId + childIndex}${childId}`,
-          idCallback,
-        }))
+      idCallbacks: withChildIndex(action.nodes).map(
+        ([, childIndex], realIndex) =>
+          action.idCallbacks[realIndex]?.map(({ idCallback, id: childId }) => ({
+            id: `${parentId}-${mostRecentId + childIndex}${childId}`,
+            idCallback,
+          })) ?? []
       ),
       nodes: withChildIndex(action.nodes).map(([node, childIndex]) =>
         node.type === "text"
@@ -213,12 +226,15 @@ const addIdAndIndex = (
       index: currentIndex(slot, childIds),
       idCallbacks:
         action.type === "dynamic-child-ancestor"
-          ? action.idCallbacks.map((itemCallbacks, childIndex) =>
-              itemCallbacks.map(({ idCallback, id: childId }) => ({
-                id: `${parentId}-${currentId + childIndex}${childId}`,
-                idCallback,
-              }))
-            )
+          ? "items" in action.domAction
+            ? withChildIndex(action.domAction.items).map(
+                ([, childIndex], realIndex) =>
+                  action.idCallbacks[realIndex]?.map(({ idCallback, id: childId }) => ({
+                    id: `${parentId}-${mostRecentId + childIndex}${childId}`,
+                    idCallback,
+                  })) ?? []
+              )
+            : action.idCallbacks
           : [
               action.idCallbacks.map(({ idCallback, id: childId }) => ({
                 id: `${parentId}-${currentId}${childId}`,
@@ -262,12 +278,16 @@ const addIdAndIndex = (
       type: "dynamic-child-ancestor",
       targetId: parentId,
       index: currentIndex(slot, childIds),
-      idCallbacks: action.idCallbacks.map((itemCallbacks, childIndex) =>
-        itemCallbacks.map(({ idCallback, id: childId }) => ({
-          id: `${parentId}-${mostRecentId + childIndex}${childId}`,
-          idCallback,
-        }))
-      ),
+      idCallbacks:
+        "items" in action.domAction
+          ? withChildIndex(action.domAction.items).map(
+              ([, childIndex], realIndex) =>
+                action.idCallbacks[realIndex]?.map(({ idCallback, id: childId }) => ({
+                  id: `${parentId}-${mostRecentId + childIndex}${childId}`,
+                  idCallback,
+                })) ?? []
+            )
+          : action.idCallbacks,
       domAction:
         action.domAction.type === "insertAt" || action.domAction.type === "replaceAt"
           ? {
@@ -439,58 +459,6 @@ export const element = <ElementType extends keyof HTMLElementTagNameMap>(
   );
   return initAction;
 };
-
-export type RxNode = Observable<StaticAction | DynamicAction>;
-
-export type RxStaticNode = Observable<StaticAction>;
-export type StaticAction = InitAction | ModifyAction | ChildAction;
-export type InitAction = {
-  type: "init";
-  node: Element | Text;
-  idCallbacks: IdCallbacks;
-};
-export type ModifyAction = {
-  type: "modify";
-  id: string;
-  property: Properties;
-};
-export type ChildAction = {
-  type: "child";
-  targetId: string;
-  domAction: DOMAction<Element | Text>;
-  idCallbacks: IdCallbacks;
-};
-
-export type RxDynamicNode = Observable<DynamicAction>;
-export type DynamicAction = DynamicInitAction | DynamicModifyAction | DynamicChildAction | DynamicChildAncestorAction;
-export type DynamicInitAction = {
-  type: "dynamic-init";
-  index: number;
-  nodes: (Element | Text)[];
-  idCallbacks: IdCallbacks[];
-};
-export type DynamicModifyAction = {
-  type: "dynamic-modify";
-  index: number;
-  action: ModifyAction;
-};
-export type DynamicChildAction = {
-  type: "dynamic-child";
-  domAction: DOMAction<Element | Text>;
-  idCallbacks: IdCallbacks[];
-};
-export type DynamicChildAncestorAction = {
-  type: "dynamic-child-ancestor";
-  index: number;
-  targetId: string;
-  domAction: DOMAction<Element | Text>;
-  idCallbacks: IdCallbacks[];
-};
-
-export type IdCallbacks = {
-  idCallback: (id: string | null) => void;
-  id: string;
-}[];
 
 export type ValueOf<A> = A[keyof A];
 

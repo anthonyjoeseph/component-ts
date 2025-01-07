@@ -8,34 +8,6 @@ import * as R from "fp-ts/Record";
 
 const rainbow = ["red", "orange", "yellow", "green", "blue", "indigo", "violet"];
 
-const applySafe =
-  <A, B>(fn: (a: A) => B) =>
-  (a: A | undefined): B | undefined =>
-    a ? fn(a) : undefined;
-
-const arr = new r.BehaviorSubject<number[]>([]);
-const prepend = new r.Subject<number>();
-const inputId = new r.BehaviorSubject<string | undefined>(undefined);
-const inputVal = () =>
-  pipe(
-    inputId.getValue(),
-    applySafe((id) => document.getElementById(id)),
-    (val) => (val as HTMLInputElement)?.value
-  );
-
-const addOne = (num: number) => num + 1;
-const minusOne = (num: number) => num - 1;
-
-const both = {
-  addOne,
-  minusOne,
-};
-
-type UnionToIntersection<T> = (T extends any ? (x: T) => any : never) extends (x: infer R) => any ? R : never;
-
-declare const desired: <A extends Record<string, (...a: any) => any>>(
-  a: A
-) => (...input: Parameters<A[keyof A]>) => { [K in keyof A]: ReturnType<A[K]> };
 /* 
 const num = (num: number) =>
   e("div", {

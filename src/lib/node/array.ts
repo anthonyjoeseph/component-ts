@@ -8,7 +8,7 @@ import {
   StaticAction,
   DynamicInitAction,
   IdCallbacks,
-} from "./element";
+} from "./actions";
 import { Element, Text } from "hast";
 import { createAsyncStart, range, sum } from "./util";
 
@@ -348,7 +348,7 @@ const mergeInsertActions = (actions: DynamicAction[]): DynamicInitAction[] => {
         {
           type: "dynamic-init",
           index,
-          idCallbacks: cur.node.type === "text" ? [] : [cur.idCallbacks],
+          idCallbacks: [cur.idCallbacks],
           nodes: [cur.node],
         },
       ] as DynamicInitAction[];
@@ -358,8 +358,7 @@ const mergeInsertActions = (actions: DynamicAction[]): DynamicInitAction[] => {
       {
         type: "dynamic-init",
         index: mostRecentInit.index,
-        idCallbacks:
-          cur.node.type === "text" ? mostRecentInit.idCallbacks : [...mostRecentInit.idCallbacks, cur.idCallbacks],
+        idCallbacks: [...mostRecentInit.idCallbacks, cur.idCallbacks],
         nodes: [...mostRecentInit.nodes, cur.node],
       },
     ] as DynamicInitAction[];

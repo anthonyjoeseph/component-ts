@@ -1,5 +1,5 @@
 import * as r from "rxjs";
-import { element as e, InitAction, RxNode } from "../src/lib/node/element";
+import { element as e } from "../src/lib/node/element";
 import { text as t } from "../src/lib/node/text";
 import { array as a } from "../src/lib/node/array";
 import { h } from "hastscript";
@@ -7,6 +7,7 @@ import { describe, test } from "node:test";
 import * as assert from "node:assert/strict";
 import { scrubIdCallbacks } from "./test-util";
 import { DOMAction } from "../src/lib/array/domAction";
+import { InitAction, RxNode } from "../src/lib/node/actions";
 
 const insert = (items: RxNode[], index = 0): DOMAction<RxNode> => ({ type: "insertAt", items, index });
 const insert$ = (items: RxNode[], index = 0): RxNode => a(r.of(insert(items, index)));
@@ -36,6 +37,7 @@ describe("text", () => {
       ]),
     ]).pipe(r.toArray());
     const actions = await r.firstValueFrom(node);
+    (actions[0] as InitAction).idCallbacks.forEach(({ idCallback, id }) => idCallback(id));
     assert.deepEqual(scrubIdCallbacks(actions), [
       {
         type: "init",

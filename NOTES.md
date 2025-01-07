@@ -23,3 +23,7 @@ cyber security:
 [HTML AST](https://unifiedjs.com/explore/package/hastscript/)
 [HAST to html string](https://unifiedjs.com/explore/package/hast-util-to-html/)
 [HAST to dom obj](https://unifiedjs.com/explore/package/hast-util-to-dom/)
+
+IO Research:
+FRP: - https://stackoverflow.com/questions/5875929/specification-for-a-functional-reactive-programming-language - http://conal.net/blog/posts/why-program-with-continuous-time - http://conal.net/blog/posts/can-functional-programming-be-liberated-from-the-von-neumann-paradigm
+Haskell: - https://wasp-lang.dev/blog/2021/09/01/haskell-forall-tutorial - https://ryanglscott.github.io/2021/08/22/leibniz-equality-in-haskell-part-1/ - https://ryanglscott.github.io/2021/09/06/leibniz-equality-in-haskell-part-2-heterogeneous-equality/ - https://markkarpov.com/post/existential-quantification.html
