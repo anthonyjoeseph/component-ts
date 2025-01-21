@@ -13,7 +13,7 @@ const insert = (items: RxNode[], index = 0): DOMAction<RxNode> => ({ type: "inse
 const insert$ = (items: RxNode[], index = 0): RxNode => a(r.of(insert(items, index)));
 
 describe("text", () => {
-  test.skip("solo text child inside div", async () => {
+  test("solo text child inside div", async () => {
     const node = e("div", {}, [t(r.of("hello text"))]).pipe(r.toArray());
     const actions = await r.firstValueFrom(node);
     assert.deepEqual(scrubIdCallbacks(actions), [
