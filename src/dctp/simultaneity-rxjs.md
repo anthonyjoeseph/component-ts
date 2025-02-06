@@ -1,0 +1,44 @@
+- the saga of impelmenting `batchSync`
+  - `batchSync` assumed to be impossible
+    - emitting _after_ all sync emissions have completed would require knowledge of the future
+  - discovery! `batchColdSync` can seem to emit all sync emissions on cold start
+    - this seems to be an example of "knowing the future"
+    - somehow encoded in rxjs's `defer` is the idea of an "end of a sync frame"
+  - extending this into a full-blown `batchSync` turns out to be impossible
+    - the use of `batchColdSync` actually _does_ necessarily encode some prior knowledge of the future
+    - our pre-determined end time is the actual `.subscribe()`
+    - since rxjs is lazy, synchronous values "already happened" (in some sense) by the time we do a `.subscribe()`
+    - however, once the initial subscribe is complete, we have no other signal of "end of this sync frame"
+  - by extension, it's also impossible to batch items from the same "parent" observable (the diamond problem)
+    - they will be subscribed to in sequence - `r.merge(parent, parent, ...)`
+    - when the first one emits, it would have to know ahead of time whether the second one would emit too
+      - it's possible the second one is filtered - `r.merge(parent, parent.pipe(filter(() => false)))`
+    - alternately, when the second one emits, it would have to know whether the previous one had emitted within the same "sync frame"
+      - this would require some prior knowledge of the "end of a sync frame"
+  - it actually is possible to implement a marginal `batchSync` in js & rx
+    - start with `batchColdSync`
+    - then, use `setImmediate`, which represents the "end of a microtask"
+      - this accumulates some overhead, and isn't supported well in the browser
+      - could use `MessageChannel` in the browser (like react), but overhead is more than it needs to be
+- it _should_ be possible to merge "simultaneous" events
+  - with the definition that "simultaneous" is equivalent to "common ancestor"
+  - we do not solve "glitches"
+    - "synchronous" observables are equivalent to arrays
+    - we have proven that "downgrading" from `array -> observable` leads to information loss
+      - barring something like "observable traits" at a value level
+  - implementation
+    - `class Behavior<A> extends Observable<A>`
+      - public variable "reactive: Observable<void>"
+      - public variable "provenance: Symbol[]"
+      - public variable "value: A"
+      - public method "at: (time: number) => A"
+    - there is a `merge: (Behavior<A>[]) => Behavior<A[]>` that merges simultaneous occurrences
+      - this can't be represented as a monoid, since that concats to `Behavior<A>`
+        - there is a `monoid` that flattens the simultaneous values into a `Behavior<A>`
+        - there could be a `getMonoid`, which would require a monoid for `A`, but who cares
+      - this works by:
+        - mapping each individual behavior's "reactive" value to their "provenances"
+        - when a reactive value is emitted, anything that shares its provenance will be considered "simultaneous"
+          - reactive values, before they emit, need to update their variable
+          - when an emission is received, all other behaviors that share a provenance will have their value read
+            - the variables should reference the same value, which should now be updated

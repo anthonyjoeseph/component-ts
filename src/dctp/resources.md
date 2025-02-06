@@ -45,3 +45,7 @@
 # talks
 
 - https://www.youtube.com/watch?v=2oJtZs0XFlU
+
+# wiki
+
+- https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods

@@ -4,7 +4,6 @@ import { TrimmableReplaySubject } from "./TrimmableReplaySubject";
 let unused: any = TrimmableReplaySubject;
 
 const test0 = new TrimmableReplaySubject<number>();
-const afterTimeout = new r.Subject<void>();
 
 export function doOnSubscribe<T>(onSubscribe: () => void): (source: r.Observable<T>) => r.Observable<T> {
   return function inner(source: r.Observable<T>): r.Observable<T> {
@@ -45,21 +44,19 @@ const closeAfterSync =
     });
   };
 
-/* const subj2 = new r.Subject<number>();
-setTimeout(() => {
-  r.merge(
-    subj2,
-    r.defer(() => {
-      subj2.next(0);
-      subj2.next(1);
-      subj2.next(2);
-      setTimeout(() => subj2.next(3), 0);
-      return r.EMPTY;
-    })
-  )
-    .pipe(closeAfterSync())
-    .subscribe(console.log);
-}, 1000); */
+const subj2 = new r.Subject<number>();
+r.merge(
+  subj2,
+  r.defer(() => {
+    subj2.next(0);
+    subj2.next(1);
+    subj2.next(2);
+    setTimeout(() => subj2.next(3), 0);
+    return r.EMPTY;
+  })
+)
+  .pipe(closeAfterSync())
+  .subscribe(console.log);
 
 const batchSyncClosing =
   <A>(): r.OperatorFunction<A, A[]> =>
@@ -111,34 +108,20 @@ r.merge(r.of(0, 1, 2), t, t, t)
 test0.next(0);
 test0.next(1);
 test0.next(2);
-setTimeout(() => afterTimeout.next(), 0);
+setTimeout(() => {
+  test0.push(3);
+  test0.push(4);
+  test0.push(5);
+  test0.next(Infinity);
+}, 0);
 
-r.merge(
-  test0,
-  afterTimeout.pipe(
-    r.mergeMap(() =>
-      r.merge(
-        r.defer(() => {
-          test0.push(3);
-          test0.push(4);
-          test0.push(5);
-          return r.EMPTY;
-        }),
-        r.defer(() => {
-          test0.next(Infinity);
-          return r.EMPTY;
-        })
-      )
-    )
-  )
-)
-  .pipe(
-    batchSyncClosing(),
-    r.tap(() => {
-      test0.empty();
-    })
-  )
-  .subscribe(console.log);
+test0.pipe(
+  batchSyncClosing(),
+  r.tap(() => {
+    test0.empty();
+  })
+);
+//.subscribe(console.log);
 
 const batchSync =
   <A>(): r.OperatorFunction<A, A[]> =>
