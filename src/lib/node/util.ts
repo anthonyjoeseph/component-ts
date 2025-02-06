@@ -16,26 +16,25 @@ export type Async<A> = {
   value: A;
 };
 
-export const gatherSync = <A>(obs: r.Observable<A>[]): r.Observable<Sync<A> | Async<A>> => {
-  let isSync = true;
-  const sync: Sync<A> = { type: "sync", value: [] };
+export const batchColdSync =
+  <A>(): r.OperatorFunction<A, A[]> =>
+  (ob) => {
+    let isSync = true;
+    const coldVals: A[] = [];
 
-  return r.merge(
-    r.merge(...obs).pipe(
-      r.mergeMap((val) => {
-        if (isSync) {
-          sync.value.push(val as A);
-          return r.EMPTY;
-        }
-        return r.of({
-          type: "async",
-          value: val,
-        } as Async<A>);
+    return r.merge(
+      ob.pipe(
+        r.mergeMap((val) => {
+          if (isSync) {
+            coldVals.push(val);
+            return r.EMPTY;
+          }
+          return r.of([val]);
+        })
+      ),
+      r.defer(() => {
+        isSync = false;
+        return r.of(coldVals);
       })
-    ),
-    r.defer(() => {
-      isSync = false;
-      return r.of(sync);
-    })
-  );
-};
+    );
+  };
