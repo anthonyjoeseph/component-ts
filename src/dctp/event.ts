@@ -6,7 +6,7 @@ import { none, reactive, Reactive, some, type Option, type Some } from "./reacti
 export type Event<A> = {
   reactives: Reactive<Option<r.Timestamp<unknown>>>[];
   pull: (time: Time) => r.Timestamp<A>[];
-  trim: () => void;
+  trim: (time: Time) => void;
 };
 
 export const map =
@@ -81,7 +81,7 @@ export const toObservable = <A>(event: Event<A>): Observable<A> =>
     .pipe(
       r.mergeMap((time) => {
         const emissions = event.pull(time).map((em) => em.value);
-        event.trim();
+        event.trim(time);
         return r.of(...emissions);
       })
     );
@@ -89,7 +89,7 @@ export const toObservable = <A>(event: Event<A>): Observable<A> =>
 export const timer = (delay: Time, interval: Time): Event<number> => {
   return {
     reactives: [],
-    trim: () => {},
+    trim: (time) => {},
     pull: (time) => {},
   };
 };
@@ -133,11 +133,11 @@ export const merge = <All extends unknown[]>(
       ),
     })),
     pull: (time) => {
-      return latestReactiveIndicies.map((eventIndex) => events[eventIndex].pull());
+      return latestReactiveIndicies.map((eventIndex) => events[eventIndex].pull(time));
     },
-    trim: () => {
+    trim: (time) => {
       for (const e of events) {
-        e.trim();
+        e.trim(time);
       }
     },
   };

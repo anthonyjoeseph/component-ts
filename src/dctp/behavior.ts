@@ -9,7 +9,7 @@ export type Behavior<A> = {
   latestTrim: Time;
   pull: (time: Time) => A;
   pullInterval: (interval: Interval<Time>) => Interval<A>;
-  trim: () => void;
+  trim: (time: Time) => void;
 };
 
 export const behavior = () => {};
@@ -18,7 +18,7 @@ export const sample = <A>(behavior: Behavior<A>, sampler: Observable<Time>): Obs
   r.merge(r.merge(...behavior.reactives.map((re) => re.signal)).pipe(r.mergeMap(() => r.EMPTY)), sampler).pipe(
     r.map((time) => {
       const emissions = behavior.pull(time);
-      behavior.trim();
+      behavior.trim(time);
       return emissions;
     })
   );
@@ -36,7 +36,7 @@ const split = (interval: Interval<number>): [Interval<number>, Interval<number>]
 export const predicate = (b: Behavior<boolean>, errorMargin: Time = 1): Event<void> => {
   return {
     reactives: b.reactives,
-    trim: () => b.trim(),
+    trim: (time) => b.trim(time),
     pull: (time) => {
       let lowestError = Infinity;
       const intervalsToTry: Interval<Time>[] = [{ low: b.latestTrim, high: time }];
