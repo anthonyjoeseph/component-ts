@@ -38,3 +38,42 @@ export const batchColdSync =
       })
     );
   };
+
+export const batchSync =
+  <A>(): r.OperatorFunction<A, A[]> =>
+  (ob) => {
+    const batch: A[] = [];
+    let isSync = true;
+    let isAsync = false;
+    const endOfMicrotask = r.of(null).pipe(r.observeOn(r.queueScheduler));
+
+    return r.merge(
+      ob.pipe(
+        r.observeOn(r.queueScheduler),
+        r.mergeMap((val) => {
+          if (isSync || isAsync) {
+            batch.push(val);
+            return r.EMPTY;
+          }
+          isAsync = true;
+          batch.push(val);
+          return endOfMicrotask.pipe(
+            r.mergeMap(() => {
+              isAsync = false;
+              if (batch.length === 0) return r.EMPTY;
+              const retval = [...batch];
+              batch.splice(0, batch.length);
+              return r.of(retval);
+            })
+          );
+        })
+      ),
+      r.defer(() => {
+        isSync = false;
+        if (batch.length === 0) return r.EMPTY;
+        const retval = [...batch];
+        batch.splice(0, batch.length);
+        return r.of(retval);
+      })
+    );
+  };
