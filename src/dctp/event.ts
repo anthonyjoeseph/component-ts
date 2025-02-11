@@ -71,6 +71,7 @@ export const fromObservableApprox = <A>(obs: Observable<A>): Event<A> => {
   };
 };
 
+// is this useful?
 export const toObservable = <A>(event: Event<A>): Observable<A> =>
   r
     .merge(

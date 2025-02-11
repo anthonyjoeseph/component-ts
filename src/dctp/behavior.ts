@@ -6,7 +6,6 @@ import { Reactive, type Option } from "./reactive";
 
 export type Behavior<A> = {
   reactives: Reactive<Option<r.Timestamp<unknown>>>[];
-  latestTrim: Time;
   pull: (time: Time) => A;
   pullInterval: (interval: Interval<Time>) => Interval<A>;
   trim: (time: Time) => void;
@@ -33,13 +32,18 @@ const split = (interval: Interval<number>): [Interval<number>, Interval<number>]
 ];
 
 // the start time when boolean behavior becomes true
+// TODO: fix so that is only finds the FIRST true value
 export const predicate = (b: Behavior<boolean>, errorMargin: Time = 1): Event<void> => {
+  let latestTrim: Time = -Infinity;
   return {
     reactives: b.reactives,
-    trim: (time) => b.trim(time),
+    trim: (time) => {
+      latestTrim = time;
+      b.trim(time);
+    },
     pull: (time) => {
       let lowestError = Infinity;
-      const intervalsToTry: Interval<Time>[] = [{ low: b.latestTrim, high: time }];
+      const intervalsToTry: Interval<Time>[] = [{ low: latestTrim, high: time }];
       const emissions: r.Timestamp<void>[] = [];
       while (intervalsToTry.length > 0) {
         const tryNextCycle: Interval<Time>[] = [];

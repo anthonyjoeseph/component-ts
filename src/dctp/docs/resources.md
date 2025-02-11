@@ -1,3 +1,20 @@
+# integration/physics
+
+- https://hackage.haskell.org/package/vector-space
+  - https://github.com/conal/vector-space?tab=readme-ov-file
+  - https://vimeo.com/6622658
+- https://hackage.haskell.org/package/learn-physics
+  - https://www.google.com/books/edition/Learn_Physics_with_Functional_Programmin/6ytmEAAAQBAJ?hl=en&gbpv=1&printsec=frontcover
+- https://github.com/conal/Fran/blob/master/src/Integral.hs
+- https://hackage.haskell.org/package/reactive-0.11.5/docs/src/FRP-Reactive-Behavior.html#integral
+- https://www.khanacademy.org/math
+  - multivariable calculus (& earlier)
+  - differential equations
+  - linear algebra - vectors & stuff
+- https://www.youtube.com/playlist?list=PLSlpr6o9vURwq3oxVZSimY8iC-cdd3kIs
+  - "let's make a physics engine"
+- https://hackage.haskell.org/package/linear
+
 # js repos
 
 - https://github.com/krausest/js-framework-benchmark
@@ -27,6 +44,7 @@
 - https://futureofcoding.org/papers/comprehensible-frp/comprehensible-frp.pdf
 - https://www.sciencedirect.com/science/article/pii/S157106611200045X
 - https://www.semanticscholar.org/paper/LTL-types-FRP%3A-linear-time-temporal-logic-as-types%2C-Jeffrey/b201a51586a218c2c32f48d49179f6511df26976
+- https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=8805dca7369fddcfcfcb5f8ac8a9dcd3fd857930
 
 # blog posts
 
@@ -37,6 +55,9 @@
 - https://ncatlab.org/nlab/show/temporal+logic#Jeffrey12
 - https://www.haskellforall.com/2013/04/pipes-concurrency-100-reactive.html
 - https://markkarpov.com/post/free-monad-considered-harmful.html
+- http://conal.net/blog/posts/why-classic-FRP-does-not-fit-interactive-behavior
+  - explains Paul Hudak = Yale = Yampa
+  - and why he's not into arrowized-frp
 
 # books
 
