@@ -9,20 +9,11 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "node",
-      "runtimeArgs": [
-        "--nolazy",
-        "-r",
-        "ts-node/register/transpile-only"
-      ],
-      "args": [
-        "src/index-node.ts"
-      ],
+      "runtimeArgs": ["--nolazy", "-r", "ts-node/register/transpile-only"],
+      "args": ["src/index-node.ts"],
       "cwd": "${workspaceRoot}",
       "internalConsoleOptions": "openOnSessionStart",
-      "skipFiles": [
-        "<node_internals>/**",
-        "node_modules/**"
-      ]
+      "skipFiles": ["<node_internals>/**", "node_modules/**"]
     },
     {
       "type": "chrome",
@@ -35,20 +26,26 @@
       }
     },
     {
+      "name": "Debug scratch",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "tsx",
+      "runtimeArgs": [],
+      "program": "src/dctp/scratch.ts",
+      "cwd": "${workspaceRoot}",
+      "internalConsoleOptions": "openOnSessionStart",
+      "skipFiles": ["${workspaceFolder}/<node_internals>/**", "node_modules/**"]
+    },
+    {
       "name": "Debug node:test",
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "tsx",
-      "runtimeArgs": [
-        "--test"
-      ],
+      "runtimeArgs": ["--test"],
       "program": "test/dctp.test.ts",
       "cwd": "${workspaceRoot}",
       "internalConsoleOptions": "openOnSessionStart",
-      "skipFiles": [
-        "${workspaceFolder}/<node_internals>/**",
-        "node_modules/**"
-      ]
-    },
+      "skipFiles": ["${workspaceFolder}/<node_internals>/**", "node_modules/**"]
+    }
   ]
 }

@@ -1,48 +1,42 @@
-import * as assert from "node:assert/strict";
+import * as assert from "node:assert";
 import { describe, test } from "node:test";
-import { pipeWith as p } from "pipe-ts";
 import * as r from "rxjs";
-import { event, filter, map, merge, toObservable } from "../src/dctp/event";
+import * as e from "../src/dctp/event";
 
 describe("event", () => {
-  test("init", async () => {});
-  test("map", async () => {});
-  test("filter", async () => {});
-  test("merge simultaneous", async () => {
-    const int = event(0, r.of(0, 1).pipe(r.observeOn(r.asapScheduler)));
-    const int2 = event(0, r.of(99, 100).pipe(r.observeOn(r.asapScheduler)));
+  test("converts to/from observable", async () => {
+    const one = e.fromObservable(r.timer(0, 1000));
 
-    const all = merge([int, int2, int, int2]);
-
-    const final = await r.firstValueFrom(toObservable(all).pipe(r.toArray()));
-
-    assert.deepStrictEqual(final, [
-      [0, 0],
-      [99, 99],
-      [1, 1],
-      [100, 100],
-    ]);
+    e.toObservable(one).subscribe(console.log);
   });
-  test("filter + merge", async () => {
-    const int = event(0, r.of(0, 1).pipe(r.observeOn(r.asapScheduler)));
-    const int2 = event(0, r.of(0, 1).pipe(r.observeOn(r.asapScheduler)));
 
-    const all = merge([
-      int,
-      p(
-        int,
-        map((num) => -num)
-      ),
-      int2,
-      p(
-        int2,
-        filter((num) => num % 2 === 0),
-        map((num) => -num)
-      ),
-    ]);
+  test("stack safe recursive definitions", async () => {
+    const ones: e.Event<number> = e.defer(() => {
+      return e.mergeAll(e.of(e.of(1), ones));
+    });
 
-    const final = await r.firstValueFrom(toObservable(all).pipe(r.toArray()));
+    // fifty thousand should be enough to reveal any
+    // stack overflows caused by the implementation
+    const obs = e.toObservable(ones).pipe(r.take(50000), r.toArray());
+    const finiteOnes = await r.firstValueFrom(obs);
 
-    assert.deepStrictEqual(final, [[0, -0], [0, -0], [1, -1], [1]]);
+    const fiftyThousandOnes = new Array(50000).map(() => 1);
+
+    assert.deepStrictEqual(finiteOnes, fiftyThousandOnes);
+  });
+  test("can batch simultaneous emissions", async () => {
+    const ancestorO = r.of(null).pipe(
+      r.delay(0),
+      r.mergeMap(() => r.of(0, 1, 2)),
+      r.share()
+    );
+    const ancestor = e.fromObservable(ancestorO);
+    const child = e.mergeAll(e.of(ancestor, ancestor));
+
+    const simultaneous = e.batchSimultaneous(child);
+
+    const output = await r.firstValueFrom(e.toObservable(simultaneous).pipe(r.toArray()));
+
+    assert.deepStrictEqual(output, [[0, 1, 2, 0, 1, 2]]);
   });
 });

@@ -1,145 +1,148 @@
-import type { Observable } from "rxjs";
+import * as i from "ix/iterable";
 import * as r from "rxjs";
-import { Time } from "./calculus";
-import { none, reactive, Reactive, some, type Option, type Some } from "./reactive";
+import { SymbolMapping, get, set } from "./util";
 
-export type Event<A> = {
-  reactives: Reactive<Option<r.Timestamp<unknown>>>[];
-  pull: (time: Time) => r.Timestamp<A>[];
-  trim: (time: Time) => void;
-};
+export type Gen<A> = (provenance: symbol) => Iterable<A>;
 
-export const map =
-  <A, B>(fn: (a: A) => B) =>
-  (e: Event<A>): Event<B> => {
-    return {
-      reactives: e.reactives,
-      pull: (time) => e.pull(time).map((em) => ({ ...em, value: fn(em.value) })),
-      trim: e.trim,
-    };
-  };
+export interface Event<A> {
+  generator: Gen<A>;
+  provenance: r.BehaviorSubject<symbol[]>;
+  reactive: r.Observable<symbol>;
+}
 
-export const filter =
-  <A>(fn: (a: A) => boolean) =>
-  (e: Event<A>): Event<A> => {
-    return {
-      reactives: e.reactives,
-      pull: (time) => e.pull(time).filter((e) => fn(e.value)),
-      trim: e.trim,
-    };
-  };
-
-export const fromObservable = <A>(obs: Observable<r.Timestamp<A>>): Event<A> => {
-  const re = reactive(none, obs.pipe(r.map(some)));
-  const emissions: r.Timestamp<A>[] = [];
-  return {
-    reactives: [
-      {
-        ...re,
-        signal: re.signal.pipe(
-          r.tap(() => {
-            emissions.push((re.latest as Some<r.Timestamp<A>>).value);
-          })
-        ),
-      },
-    ],
-    pull: () => emissions,
-    trim: () => {
-      emissions.splice(0, emissions.length);
+export const fromObservable = <A>(obs: r.Observable<A>): Event<A> => {
+  let latest: A;
+  const selfProvenance = Symbol();
+  const provenance = new r.BehaviorSubject([selfProvenance]);
+  const ev: Event<A> = {
+    generator: function* (givenP) {
+      if (givenP === selfProvenance) {
+        yield latest;
+      }
+      return;
     },
-  };
-};
-
-export const fromObservableApprox = <A>(obs: Observable<A>): Event<A> => {
-  const re = reactive(none, obs.pipe(r.map(some)));
-  const emissions: r.Timestamp<A>[] = [];
-  return {
-    reactives: [
-      {
-        ...re,
-        signal: re.signal.pipe(
-          r.tap(() => {
-            emissions.push((re.latest as Some<r.Timestamp<A>>).value);
-          })
-        ),
-      },
-    ],
-    pull: () => emissions,
-    trim: () => {
-      emissions.splice(0, emissions.length);
-    },
-  };
-};
-
-// is this useful?
-export const toObservable = <A>(event: Event<A>): Observable<A> =>
-  r
-    .merge(
-      ...event.reactives.map((re) =>
-        re.signal.pipe(r.map(() => (re.latest as Some<r.Timestamp<unknown>>).value.timestamp))
-      )
-    )
-    .pipe(
-      r.mergeMap((time) => {
-        const emissions = event.pull(time).map((em) => em.value);
-        event.trim(time);
-        return r.of(...emissions);
+    provenance,
+    reactive: obs.pipe(
+      r.map((a) => {
+        latest = a;
+        return selfProvenance;
       })
-    );
-
-export const timer = (delay: Time, interval: Time): Event<number> => {
-  return {
-    reactives: [],
-    trim: (time) => {},
-    pull: (time) => {},
+      /* r.finalize(() => {
+        const currentP = [...provenance.getValue()];
+        const selfIndex = currentP.indexOf(selfProvenance);
+        const withoutSelf = currentP.splice(selfIndex);
+        provenance.next(withoutSelf);
+      }) */
+    ),
   };
+  return ev;
 };
 
-// re-implement "merge" to be this instead
-export const concurrent = <A>(concurrency: number, event: Event<Event<A>>): Event<A> =>
-  undefined as unknown as Event<A>;
+export const toObservable = <A>(ev: Event<A>): r.Observable<A> => {
+  const ob = ev.reactive.pipe(r.mergeMap((provenance) => r.from(ev.generator(provenance))));
+  return ob;
+};
 
-export const switcher = <A>(event: Event<Event<A>>): Event<A> => undefined as unknown as Event<A>;
+export const map = <A, B>(ev: Event<A>, fn: (a: A) => B): Event<B> => {
+  return undefined;
+};
 
-export const merge = <All extends unknown[]>(
-  events: [
-    ...{
-      [K in keyof All]: Event<All[K]>;
+export const pairwise = <A>(ev: Event<A>): Event<[A, A]> => {};
+
+export const merge2 = <A>(a: Event<A>, b: Event<A>): Event<A> => undefined;
+
+export const switch2 = <A>(a: Event<A>, b: Event<A>): Event<A> => undefined;
+
+export const of = <A>(...values: A[]): Event<A> => {
+  const ev: Event<A> = {
+    generator: () => i.from(values),
+    provenance: new r.BehaviorSubject<symbol[]>([]),
+    reactive: r.EMPTY,
+  };
+  return ev;
+};
+
+// TODO: add 'concurrency' argument, a la rxjs mergeAll
+export const mergeAll = <A>(outer: Event<Event<A>>): Event<A> => {
+  const reactiveSubj = new r.Subject<r.Observable<symbol>>();
+  /* reactiveSubj.next(
+    outer.reactive.pipe(
+      r.finalize(() => {
+        const allSymbols = outer.provenance.getValue();
+        for (const symb of allSymbols) {
+          remove(mapping, symb);
+        }
+      })
+    )
+  ); */
+  const mutableProvenance = new r.BehaviorSubject<symbol[]>([]);
+
+  const mapping: SymbolMapping<Gen<A>> = outer.provenance.getValue().map((provenance) => ({
+    provenance,
+    values: [
+      function* (provenance) {
+        const { value: inner }: { value: Event<A> } = outer.generator(provenance)[Symbol.iterator]().next();
+        reactiveSubj.next(inner.reactive);
+
+        const allNew: symbol[] = [];
+        for (const newProvenance of inner.provenance.getValue()) {
+          set(mapping, provenance, inner.generator);
+          if (!mutableProvenance.getValue().includes(newProvenance)) {
+            allNew.push(newProvenance);
+          }
+        }
+        if (allNew.length > 0) {
+          mutableProvenance.next([...mutableProvenance.getValue(), ...allNew]);
+        }
+      },
+    ],
+  }));
+  const ev: Event<A> = {
+    generator: function* (provenance) {
+      const iteratorsForProv = get(mapping, provenance);
+      if (iteratorsForProv._tag === "Some") {
+        for (const it of iteratorsForProv.value) {
+          yield* it(provenance);
+        }
+      }
+      return;
     },
-  ]
-): Event<All[number][]> => {
-  let latestReactiveIndicies: number[] = []; // initial value is none? all? leftmost?
-  const allReactives = events.flatMap((e, eventIndex) =>
-    e.reactives.map((re, reactiveIndex) => [re, reactiveIndex + eventIndex * e.reactives.length] as const)
-  );
-  let uniqueReactives: { reactive: Reactive<unknown>; eventIndicies: number[] }[] = [];
-  for (let i = 0; i < allReactives.length; i++) {
-    const [cur, eventIndex] = allReactives[i]!;
-
-    const existingReactive = uniqueReactives.find(({ reactive }) => reactive.provenance === cur.provenance);
-    if (existingReactive) {
-      existingReactive.eventIndicies.push(eventIndex);
-    } else {
-      uniqueReactives.push({ reactive: cur, eventIndicies: [eventIndex] });
-    }
-  }
-
-  return {
-    reactives: uniqueReactives.map(({ reactive, eventIndicies }) => ({
-      ...reactive,
-      signal: reactive.signal.pipe(
-        r.tap(() => {
-          latestReactiveIndicies = eventIndicies;
+    provenance: mutableProvenance,
+    reactive: r
+      .merge(
+        reactiveSubj,
+        r.defer(() => {
+          reactiveSubj.next(outer.reactive);
+          return r.EMPTY;
+        })
+      )
+      .pipe(
+        r.map((a) => {
+          return a;
+        }),
+        r.mergeAll(),
+        r.map((a) => {
+          return a;
         })
       ),
-    })),
-    pull: (time) => {
-      return latestReactiveIndicies.map((eventIndex) => events[eventIndex].pull(time));
-    },
-    trim: (time) => {
-      for (const e of events) {
-        e.trim(time);
-      }
-    },
   };
+  return ev;
 };
+
+export const switchAll = <A>(nested: Event<Event<A>>): Event<A> => undefined as any;
+
+// rename to "fix"?
+// https://www.parsonsmatt.org/2016/10/26/grokking_fix.html
+export const defer = <A>(ctor: () => Event<A>): Event<A> => {
+  const ev: Event<Event<A>> = {
+    generator: function* (): Iterable<Event<A>> {
+      yield ctor();
+      return;
+    },
+    provenance: new r.BehaviorSubject<symbol[]>([]),
+    reactive: r.EMPTY,
+  };
+  return mergeAll(ev);
+};
+
+export const batchSimultaneous = <A>(event: Event<A>): Event<A[]> => undefined as any;

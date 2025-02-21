@@ -1,8 +1,15 @@
 # integration/physics
 
+- https://hackage.haskell.org/package/units-defs
+  - SI units as types
+- http://conal.net/blog/posts/exact-numeric-integration
+- https://metavar.blogspot.com/2008/02/higher-order-multivariate-automatic.html
+- https://www.youtube.com/watch?v=Shl3MtWGu18&t=1s
+- https://www.youtube.com/watch?v=nxaOp76MaDQ
 - https://hackage.haskell.org/package/vector-space
   - https://github.com/conal/vector-space?tab=readme-ov-file
   - https://vimeo.com/6622658
+- http://conal.net/blog/posts/differentiation-of-higher-order-types
 - https://hackage.haskell.org/package/learn-physics
   - https://www.google.com/books/edition/Learn_Physics_with_Functional_Programmin/6ytmEAAAQBAJ?hl=en&gbpv=1&printsec=frontcover
 - https://github.com/conal/Fran/blob/master/src/Integral.hs
@@ -14,6 +21,9 @@
 - https://www.youtube.com/playlist?list=PLSlpr6o9vURwq3oxVZSimY8iC-cdd3kIs
   - "let's make a physics engine"
 - https://hackage.haskell.org/package/linear
+- https://www.gamedev.net/forums/topic/424654-calculus-and-collision-detection/3825717/
+- https://www.haroldserrano.com/blog/visualizing-the-runge-kutta-method
+- https://www.toptal.com/game/video-game-physics-part-ii-collision-detection-for-solid-objects#:~:text=Continuous%20collision%20detection
 
 # js repos
 

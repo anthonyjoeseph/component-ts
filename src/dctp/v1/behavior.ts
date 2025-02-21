@@ -1,8 +1,8 @@
 import type { Observable } from "rxjs";
 import * as r from "rxjs";
+import { Event } from "../event";
+import { Reactive, type Option } from "../reactive";
 import { Interval, Time } from "./calculus";
-import { Event } from "./event";
-import { Reactive, type Option } from "./reactive";
 
 export type Behavior<A> = {
   reactives: Reactive<Option<r.Timestamp<unknown>>>[];
