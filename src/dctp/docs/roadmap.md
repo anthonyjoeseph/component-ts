@@ -34,6 +34,9 @@
     - try it with haskell
     - worst case, get it running on the
   - test that crazy mutually-recursive behavior
+  - [the paper](http://conal.net/papers/icfp97/icfp97.pdf)
+    - [square u looking thing](https://en.wikipedia.org/wiki/Disjoint_union)
+    - [complete partial order/supremum](https://en.wikipedia.org/wiki/Complete_partial_order)
 
 - implement "batchSimultaneous" in typescript
 
@@ -52,7 +55,10 @@
 - clean up / finalize proof
 
   - [category: the essence of composition](https://bartoszmilewski.com/2014/11/04/category-the-essence-of-composition/)
-  -
+  - [constructivism](<https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_mathematics)>)
+  - [learning agda (conal resources)](https://github.com/conal/Collaboration/blob/master/learning-agda.md)
+  - [programming language foundations in agda](https://plfa.github.io/)
+  - [contextual equivalence in agda](https://plfa.github.io/ContextualEquivalence/)
 
 - include "concatMap" in haskell rx
 
