@@ -1,13 +1,5 @@
 - prove infinite list equality for ones, oneTwo, and alphaLoop
 
-- research fran
-
-  - primarily, figure out - how does the partial ordering on time cause good recursion?
-  - get it running in some capacity
-    - try it with haskell
-    - worst case, get it running on the
-  - test that crazy mutually-recursive behavior
-
 - simultaneity in our denotation of hot observable equality
 
   - does a = b even if b is slightly ahead of a? `delay(1)` should break equality
@@ -15,6 +7,22 @@
     - start with unsafeInterleaveST
     - can we just throw a `seq` into `subscribe` or `newAddHandler`?
     - what are the tradeoffs for this?
+
+- research what a `scheduler` might mean for an rx in haskell
+
+  - see above
+  - a monotonic list scheduler would delay every emission by some constant "d"
+    - if d = 3
+    - [(a, 0), (b, 1), (c, 2), ...]
+    - [(a, 3), (b, 6), (c, 9), ...]
+
+- research fran
+
+  - primarily, figure out - how does the partial ordering on time cause good recursion?
+  - get it running in some capacity
+    - try it with haskell
+    - worst case, get it running on the
+  - test that crazy mutually-recursive behavior
 
 - implement "batchSimultaneous" in typescript
 
@@ -59,7 +67,9 @@
   - `Behavior<A>` = `Observable<(time: Int) => A>`
   - `Event<A>` = `Observable<Iterable<[time: Int, value: A]>>`
   - some strange fn to combine these a behavior with a sampler
-    - `strange: (b: Behavior<A>, sampler: Observable<Int>) => Observable<A>`
+    - `strange: (b: BehaviorWithTimestamps<A>, sampler: Observable<Int>) => Observable<A>`
+    - where `BehaviorWithTimestamps<A>` is `Observable<[Int, (time: Int) => A]>`
+      - so that we can know exactly _when_ a new behavior is pushed, in continuous time
     - where 'sampler' is [`animationFrames`](https://rxjs.dev/api/index/function/animationFrames) in js
   - use some form of continuous collision detection
   - game should involve simple 2D physics, with circles colliding with each other
