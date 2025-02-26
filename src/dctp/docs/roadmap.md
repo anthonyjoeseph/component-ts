@@ -37,6 +37,8 @@
 
 - clean up / finalize proof
 
+- include "concatMap" in haskell rx
+
 - agda???????
 
 - finish component-ts
