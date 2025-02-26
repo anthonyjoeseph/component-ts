@@ -2,6 +2,8 @@ import type { Observable } from "rxjs";
 import { RxNode } from "./actions";
 import { element as e } from "./element";
 
+export type RxComponent<Props, Events> = (p: Props) => [RxNode, Events];
+
 export const buildComponent = <
   External,
   Internal extends Record<string, ((arg: never) => [RxNode, unknown]) | ((arg: never) => RxNode)>,
