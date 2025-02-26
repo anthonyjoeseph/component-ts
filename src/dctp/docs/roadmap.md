@@ -4,6 +4,12 @@
   - research interleaving and its relationship to denotation
     - can we just throw a `seq` into `subscribe` or `newAddHandler`?
     - what are the tradeoffs for this?
+    - is it ever possible for another io to emit _between_ these two ios:
+    ```
+      io1 = return 1
+      io2 = return 2
+      io3 = io1 >>= \_ -> io2
+    ```
   - [unsafeInterleaveST](https://okmij.org/ftp/Haskell/)
     - section: "Breaking referential transparency with unsafeInterleaveST"
   - [in defense of lazy io](http://comonad.com/reader/2015/on-the-unsafety-of-interleaved-io/)
