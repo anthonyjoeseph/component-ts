@@ -58,6 +58,12 @@
 
 # blog posts
 
+- https://stackoverflow.com/a/1030631
+  - conal mentions denotational semantics
+  - "fine-grained, determinate, and continuous"
+  - "due to nondeterministic interleaving"
+- https://wiki.haskell.org/Functional_Reactive_Programming
+  - lists many implementations of frp
 - http://conal.net/blog/posts/trimming-inputs-in-functional-reactive-programming
 - https://elm-lang.org/news/farewell-to-frp
 - https://futureofcoding.org/essays/dctp.html

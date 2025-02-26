@@ -1,12 +1,17 @@
-- prove infinite list equality for ones, oneTwo, and alphaLoop
-
 - simultaneity in our denotation of hot observable equality
 
   - does a = b even if b is slightly ahead of a? `delay(1)` should break equality
   - research interleaving and its relationship to denotation
-    - start with unsafeInterleaveST
     - can we just throw a `seq` into `subscribe` or `newAddHandler`?
     - what are the tradeoffs for this?
+  - [unsafeInterleaveST](https://okmij.org/ftp/Haskell/)
+    - section: "Breaking referential transparency with unsafeInterleaveST"
+  - [in defense of lazy io](http://comonad.com/reader/2015/on-the-unsafety-of-interleaved-io/)
+  - [oleg shows lazy io breaks purity](https://mail.haskell.org/pipermail/haskell/2009-March/021065.html)
+  - [unsafeInterleaveIO docs](https://hackage.haskell.org/package/base-4.21.0.0/docs/System-IO-Unsafe.html#v:unsafeInterleaveIO)
+  - [haskell concurrency model docs](https://hackage.haskell.org/package/base-4.21.0.0/docs/Control-Concurrent.html)
+
+- prove infinite list equality for ones, oneTwo, and alphaLoop
 
 - research what a `scheduler` might mean for an rx in haskell
 
@@ -34,8 +39,14 @@
 
   - implement them in monotonicLists & rx
   - does the `switcher` cause a space leak? How to mitigate this?
+  - [basic type level programming](https://www.parsonsmatt.org/2017/04/26/basic_type_level_programming_in_haskell.html)
+  - [GADTs for dummies](https://wiki.haskell.org/GADTs_for_dummies)
+  - [type families in haskell](https://serokell.io/blog/type-families-haskell)
 
 - clean up / finalize proof
+
+  - [category: the essence of composition](https://bartoszmilewski.com/2014/11/04/category-the-essence-of-composition/)
+  -
 
 - include "concatMap" in haskell rx
 
@@ -68,11 +79,13 @@
 - make a game in haskell (or js? both?) with some rx version of frp
   - `Behavior<A>` = `Observable<(time: Int) => A>`
   - `Event<A>` = `Observable<Iterable<[time: Int, value: A]>>`
+    - `Iterable` so we can represent some kind of infinite list
+    - (see implementation in `src/dctp/v2/nestedIterable`)
   - some strange fn to combine these a behavior with a sampler
-    - `strange: (b: BehaviorWithTimestamps<A>, sampler: Observable<Int>) => Observable<A>`
-    - where `BehaviorWithTimestamps<A>` is `Observable<[Int, (time: Int) => A]>`
+    - `strange: (b: Behavior<A>, sampler: Observable<Int>) => Observable<A>`
+    - where 'sampler' defaults to [`animationFrames`](https://rxjs.dev/api/index/function/animationFrames) in js
+    - in the function, we need to do something like `b.pipe(timestamp({ now: performace.now }))`
       - so that we can know exactly _when_ a new behavior is pushed, in continuous time
-    - where 'sampler' is [`animationFrames`](https://rxjs.dev/api/index/function/animationFrames) in js
   - use some form of continuous collision detection
   - game should involve simple 2D physics, with circles colliding with each other
     - since circles are the easiest to detect continuous collisions on
