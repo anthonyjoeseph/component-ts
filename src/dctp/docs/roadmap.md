@@ -54,11 +54,19 @@
 
 - clean up / finalize proof
 
-  - [category: the essence of composition](https://bartoszmilewski.com/2014/11/04/category-the-essence-of-composition/)
-  - [constructivism](<https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_mathematics)>)
   - [learning agda (conal resources)](https://github.com/conal/Collaboration/blob/master/learning-agda.md)
   - [programming language foundations in agda](https://plfa.github.io/)
   - [contextual equivalence in agda](https://plfa.github.io/ContextualEquivalence/)
+    - is this useful to know what we're proving? aka what is contextual equivalence?
+    - or is it mostly useful as a way to learn agda?
+    - is this a good enough understanding?
+      - [the denotational semantics of programming languages - stratchey and scott](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=8805dca7369fddcfcfcb5f8ac8a9dcd3fd857930)
+  - [referential transparency, definiteness and unfoldability](https://www.itu.dk/~sestoft/papers/SondergaardSestoft1990.pdf)
+    - might be helpful to know what equality "means" in some sense
+  - [category: the essence of composition](https://bartoszmilewski.com/2014/11/04/category-the-essence-of-composition/)
+    - might be helpful to know what equality "means" in some other sense
+  - [constructivism](<https://en.wikipedia.org/wiki/Constructivism_(philosophy_of_mathematics)>)
+    - are we violating constructivism by using a proof by contradiction to say that a = b?
 
 - include "concatMap" in haskell rx
 

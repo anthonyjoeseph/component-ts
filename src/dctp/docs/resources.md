@@ -45,16 +45,17 @@
 
 # papers
 
-- http://conal.net/papers/icfp97/icfp97.pdf
-- http://conal.net/papers/push-pull-frp/push-pull-frp.pdf
-- http://conal.net/papers/data-driven/paper.pdf
-- https://elm-lang.org/assets/papers/concurrent-frp.pdf
-- https://github.com/ocharles/papers/blob/master/Efficient%20and%20Compositional%20Higher-Order%20Streams.pdf
-- https://github.com/beerendlauwers/haskell-papers-ereader/blob/master/papers/Practical%20Principled%20FRP%20-%20Forget%20the%20past%2C%20change%20the%20future%2C%20FRPNow!.pdf
-- https://futureofcoding.org/papers/comprehensible-frp/comprehensible-frp.pdf
-- https://www.sciencedirect.com/science/article/pii/S157106611200045X
-- https://www.semanticscholar.org/paper/LTL-types-FRP%3A-linear-time-temporal-logic-as-types%2C-Jeffrey/b201a51586a218c2c32f48d49179f6511df26976
-- https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=8805dca7369fddcfcfcb5f8ac8a9dcd3fd857930
+- [the denotational semantics of programming languages - stratchey and scott](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=8805dca7369fddcfcfcb5f8ac8a9dcd3fd857930)
+- [how to declare an imperative (wadler)](https://ics.uci.edu/~jajones/INF102-S18/readings/24_wadler)
+- [FRAN](http://conal.net/papers/icfp97/icfp97.pdf)
+- [push-pull frp](http://conal.net/papers/push-pull-frp/push-pull-frp.pdf)
+- [data driven frp (draft, referenced by frp-ts) - conal elliot](http://conal.net/papers/data-driven/paper.pdf)
+- [Gergeley Patai - Monadic trimming](https://github.com/ocharles/papers/blob/master/Efficient%20and%20Compositional%20Higher-Order%20Streams.pdf)
+- [frpnow library](https://github.com/beerendlauwers/haskell-papers-ereader/blob/master/papers/Practical%20Principled%20FRP%20-%20Forget%20the%20past%2C%20change%20the%20future%2C%20FRPNow!.pdf)
+- [Reflex haskell library](https://futureofcoding.org/papers/comprehensible-frp/comprehensible-frp.pdf)
+- [Jeltch - curry-howard correspondence of FRP](https://www.sciencedirect.com/science/article/pii/S157106611200045X)
+- [Linear time logic/FRP](https://www.semanticscholar.org/paper/LTL-types-FRP%3A-linear-time-temporal-logic-as-types%2C-Jeffrey/b201a51586a218c2c32f48d49179f6511df26976)
+- [Elm paper](https://elm-lang.org/assets/papers/concurrent-frp.pdf)
 
 # blog posts
 
