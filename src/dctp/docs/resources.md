@@ -47,6 +47,7 @@
 
 - [the denotational semantics of programming languages - stratchey and scott](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=8805dca7369fddcfcfcb5f8ac8a9dcd3fd857930)
 - [how to declare an imperative (wadler)](https://ics.uci.edu/~jajones/INF102-S18/readings/24_wadler)
+- [Propositions as types (wadler)](https://homepages.inf.ed.ac.uk/wadler/papers/propositions-as-types/propositions-as-types.pdf)
 - [FRAN](http://conal.net/papers/icfp97/icfp97.pdf)
 - [push-pull frp](http://conal.net/papers/push-pull-frp/push-pull-frp.pdf)
 - [data driven frp (draft, referenced by frp-ts) - conal elliot](http://conal.net/papers/data-driven/paper.pdf)

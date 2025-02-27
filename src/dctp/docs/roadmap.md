@@ -1,9 +1,9 @@
 - simultaneity in our denotation of hot observable equality
 
-  - does a = b even if b is slightly ahead of a? `delay(1)` should break equality
   - research interleaving and its relationship to denotation
     - can we just throw a `seq` into `subscribe` or `newAddHandler`?
     - what are the tradeoffs for this?
+    - does a = b even if b is slightly ahead of a? `delay(1)` should break equality
     - is it ever possible for another io to emit _between_ these two ios:
     ```
       io1 = return 1
