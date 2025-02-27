@@ -18,6 +18,10 @@ in a model `Request -> IO<Response>`, our server library returns `concat(headers
 
 we can say that the model of "streams" embedded by hyper is generalized by rx in a more expressive way
 
+hyper's phantom type is a symptom of it's under-generalization
+
+it's ok for Rx to "encapsulate" and have _its_ phantom type, because its boundaries have been studied and proven not to leak (note to author: do this)
+
 the basic idea is analagous to the maxim that "older ideas break less often"
 
 a out-of-date CTO might want to use tomcat - not only because it's well understood, but because they can be certain it won't break
