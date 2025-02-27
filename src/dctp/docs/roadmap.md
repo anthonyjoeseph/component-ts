@@ -17,9 +17,17 @@
   - [unsafeInterleaveIO docs](https://hackage.haskell.org/package/base-4.21.0.0/docs/System-IO-Unsafe.html#v:unsafeInterleaveIO)
   - [haskell concurrency model docs](https://hackage.haskell.org/package/base-4.21.0.0/docs/Control-Concurrent.html)
 
+- investigate `batch:: Hot a -> Cold [a]`
+
+  - it collects all hot emissions
+    - on "subscribe", it emits everything that had come before it in an array
+  - maybe this can just be some implemented as some kind of reference that's passed around, since everything becomes hot anyway?
+    - or else, does this need to be a primitive?
+  - useful for implementing some version of "hyper-ts" where `headers:: Hot` and `body:: Cold`, so that we never mix emissions of the two
+
 - prove infinite list equality for ones, oneTwo, and alphaLoop
 
-- research what a `scheduler` might mean for an rx in haskell
+- investigate what a `scheduler` might mean for an rx in haskell
 
   - see above
   - a monotonic list scheduler would delay every emission by some constant "d"
@@ -54,7 +62,10 @@
 
 - clean up / finalize proof
 
+  - [sound wrt contextual equivalence](https://siek.blogspot.com/2017/03/sound-wrt-contextual-equivalence.html)
   - [learning agda (conal resources)](https://github.com/conal/Collaboration/blob/master/learning-agda.md)
+  - [agda in a nutshell - serokell](https://serokell.io/blog/agda-in-nutshell)
+  - [learn you an agda](https://williamdemeo.github.io/2014/02/27/learn-you-an-agda/)
   - [programming language foundations in agda](https://plfa.github.io/)
   - [contextual equivalence in agda](https://plfa.github.io/ContextualEquivalence/)
     - is this useful to know what we're proving? aka what is contextual equivalence?
@@ -71,6 +82,20 @@
 - include "concatMap" in haskell rx
 
 - agda???????
+
+  - [the lax braided structure of streaming io](https://drops.dagstuhl.de/storage/00lipics/lipics-vol012-csl2011/LIPIcs.CSL.2011.292/LIPIcs.CSL.2011.292.pdf)
+    - [games - A Full Abstraction for PCF](https://www.cs.ox.ac.uk/files/323/pcf.pdf)
+    - [Kahn Process Networks lecture](https://ptolemy.berkeley.edu/projects/embedded/eecsx44/lectures/Spring2013/dataflow.pdf)
+    - [repo](https://github.com/agda-attic/agda-system-io)
+    - [LaxBraided.agda](https://github.com/agda-attic/agda-system-io/blob/master/src/System/IO/Transducers/Properties/LaxBraided.agda)
+  - [a quick introduction to denotational semantics in agda](https://gist.github.com/bobatkey/52ea69e8ad83b438c5318346200ab4f0)
+  - [production agda libraries (io)](https://wiki.portal.chalmers.se/agda/Main/Libraries)
+    - [lemmamachine](https://github.com/larrytheliquid/Lemmachine)
+      - agda for 'unit tests' and 'integration tests'
+    - [agda-system-io](https://github.com/agda-attic/agda-system-io)
+      - kinda boring?
+    - [frp w/ linear temporal logic](https://github.com/agda-attic/agda-frp-ltl)
+  - [learn you an agda](https://williamdemeo.github.io/2014/02/27/learn-you-an-agda/)
 
 - finish component-ts
 
