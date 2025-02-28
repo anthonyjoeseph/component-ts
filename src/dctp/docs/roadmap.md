@@ -17,6 +17,14 @@
   - [unsafeInterleaveIO docs](https://hackage.haskell.org/package/base-4.21.0.0/docs/System-IO-Unsafe.html#v:unsafeInterleaveIO)
   - [haskell concurrency model docs](https://hackage.haskell.org/package/base-4.21.0.0/docs/Control-Concurrent.html)
 
+- investigate LTL - Linear Temporal Logic
+
+  - [basic intro](https://www.cds.caltech.edu/~murray/courses/afrl-sp12/L3_ltl-24Apr12.pdf)
+  - [blog post](https://www.cwblogs.com/posts/linear-temporal-logic/)
+  - [lecture](https://www.youtube.com/watch?v=--4S7HjoZho)
+  - [modal mu calculus](https://www.julianbradfield.org/Research/MLH-bradstir.pdf)
+  - [frp for free](https://haskellexists.blogspot.com/2016/01/frp-for-free.html)
+
 - investigate `batch:: Hot a -> Cold [a]`
 
   - it collects all hot emissions
@@ -35,16 +43,20 @@
     - [(a, 0), (b, 1), (c, 2), ...]
     - [(a, 3), (b, 6), (c, 9), ...]
 
-- research fran
+- are we able to prove a link between IORef and Fran?
 
-  - primarily, figure out - how does the partial ordering on time cause good recursion?
-  - get it running in some capacity
-    - try it with haskell
-    - worst case, get it running on the
-  - test that crazy mutually-recursive behavior
-  - [the paper](http://conal.net/papers/icfp97/icfp97.pdf)
-    - [square u looking thing](https://en.wikipedia.org/wiki/Disjoint_union)
-    - [complete partial order/supremum](https://en.wikipedia.org/wiki/Complete_partial_order)
+  - a kind of "euler's identity" where we're able to spookily relate an io to a non-io
+  - the constructs for a denotative monad that models io look an awful lot like events & behaviors ...
+  - research fran
+
+    - primarily, figure out - how does the partial ordering on time cause good recursion?
+    - get it running in some capacity
+      - try it with haskell
+      - worst case, get it running on the
+    - test that crazy mutually-recursive behavior
+    - [the paper](http://conal.net/papers/icfp97/icfp97.pdf)
+      - [square u looking thing](https://en.wikipedia.org/wiki/Disjoint_union)
+      - [complete partial order/supremum](https://en.wikipedia.org/wiki/Complete_partial_order)
 
 - implement "batchSimultaneous" in typescript
 
@@ -118,6 +130,9 @@
 
 - haskell as a frontend
 
+  - [ghcjs-dom](https://hackage.haskell.org/package/ghcjs-dom)
+    - says that it works with both ghcjs and ghc
+  - [formal documentation comments](https://mmhaskell.com/blog/comments-in-haskell)
   - [getting started with ghc js backend](https://adrianomelo.com/posts/getting-started-with-the-ghc-javascript-backend.html)
   - [2023 GHC contributors workshop](https://www.youtube.com/watch?v=LH_COanxSe0&t=5557s)
 
