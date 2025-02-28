@@ -60,6 +60,9 @@
 
 # blog posts
 
+- http://conal.net/blog/posts/is-haskell-a-purely-functional-language#comment-35882
+  - "I doubt that IO does denote anything, given the requirement of compositionality of semantics. Consider that IO includes exception-handling, which is sensitive to order-of-evaluation of pure (non-IO) expressions. Exception-handling thus extracts more meaning than exists out of pure sub-expressions, breaking compositionality."
+  - "IO also includes concurrency, which is even more troublesome."
 - https://stackoverflow.com/a/1030631
   - conal mentions denotational semantics
   - "fine-grained, determinate, and continuous"
