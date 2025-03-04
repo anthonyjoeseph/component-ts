@@ -1,3 +1,9 @@
+- research previous attempts at denoting io
+
+  - [IO monad - ncatlab](https://ncatlab.org/nlab/show/IO-monad)
+  - [SO post - monad != state of world](https://softwareengineering.stackexchange.com/questions/161568/critique-of-the-io-monad-being-viewed-as-a-state-monad-operating-on-the-world)
+  - [free monads for less - yielding io](http://comonad.com/reader/2011/free-monads-for-less-3/)
+
 - simultaneity in our denotation of hot observable equality
 
   - research interleaving and its relationship to denotation
