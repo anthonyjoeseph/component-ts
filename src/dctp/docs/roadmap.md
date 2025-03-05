@@ -4,6 +4,14 @@
   - [SO post - monad != state of world](https://softwareengineering.stackexchange.com/questions/161568/critique-of-the-io-monad-being-viewed-as-a-state-monad-operating-on-the-world)
   - [free monads for less - yielding io](http://comonad.com/reader/2011/free-monads-for-less-3/)
 
+- research exception handling in IO
+
+  - does this break the monad laws?
+    - similarly, does `unsafeInterleaveIO`?
+    - would be great if we could say simply, without complication, that "this denotation is true if io has a lawful monad instance"
+  - [Control.Exception docs](https://hackage.haskell.org/package/base-4.21.0.0/docs/Control-Exception.html)
+  - [haskell wiki](https://wiki.haskell.org/Handling_errors_in_Haskell)
+
 - simultaneity in our denotation of hot observable equality
 
   - research interleaving and its relationship to denotation
