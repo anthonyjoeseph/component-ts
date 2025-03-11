@@ -11,6 +11,10 @@
       - can be visualized as intersections with y = x
       - will be exact same intersections as f(x) has with y = 0
 
+- [how to read type system notation](https://langdev.stackexchange.com/questions/2692/how-should-i-read-type-system-notation)
+- [hindley milner notation](https://stackoverflow.com/questions/12532552/what-part-of-hindley-milner-do-you-not-understand)
+- [free variables vs bound variables](https://en.wikipedia.org/wiki/Free_variables_and_bound_variables)
+- [stanford - type theory](https://plato.stanford.edu/entries/type-theory/#1)
 - [denotative programming timeline](https://wiki.haskell.org/Denotative_programming_timeline)
 - [wikipedia - denotational semantics](https://en.m.wikipedia.org/wiki/Denotational_semantics)
 - [wikipedia - category theory timeline](https://en.wikipedia.org/wiki/Timeline_of_category_theory_and_related_mathematics)
