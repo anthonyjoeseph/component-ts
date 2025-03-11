@@ -1,8 +1,26 @@
+- fixed point iteration explanation
+
+  - [use it for square roots](https://stackoverflow.com/questions/67478195/using-fixed-point-to-show-square-root/75264885#75264885)
+  - basic intuition:
+    - g(x) is achievable thru g(x) = x - f(x)
+      - (if we're trying to find roots)
+    - we can also get g(x) by simply rearranging to have x on the left hand side
+      - this is because x = g(x), so substitution makes this true
+    - iteration works because input is supposed to equal output, so doing it over and over again will either converge or diverge
+    - "fixed points" exist on g(x), _not_ on f(x)
+      - can be visualized as intersections with y = x
+      - will be exact same intersections as f(x) has with y = 0
+
+- [denotative programming timeline](https://wiki.haskell.org/Denotative_programming_timeline)
+- [wikipedia - denotational semantics](https://en.m.wikipedia.org/wiki/Denotational_semantics)
+- [wikipedia - category theory timeline](https://en.wikipedia.org/wiki/Timeline_of_category_theory_and_related_mathematics)
+
 - research previous attempts at denoting io
 
   - [IO monad - ncatlab](https://ncatlab.org/nlab/show/IO-monad)
   - [SO post - monad != state of world](https://softwareengineering.stackexchange.com/questions/161568/critique-of-the-io-monad-being-viewed-as-a-state-monad-operating-on-the-world)
   - [free monads for less - yielding io](http://comonad.com/reader/2011/free-monads-for-less-3/)
+  - [the io problem - haskell wiki](https://wiki.haskell.org/The_I/O_problem)
 
 - research exception handling in IO
 
@@ -26,6 +44,7 @@
     ```
   - [unsafeInterleaveST](https://okmij.org/ftp/Haskell/)
     - section: "Breaking referential transparency with unsafeInterleaveST"
+    - [also heere](https://okmij.org/ftp/Haskell/#unsafeInterleaveST)
   - [in defense of lazy io](http://comonad.com/reader/2015/on-the-unsafety-of-interleaved-io/)
   - [oleg shows lazy io breaks purity](https://mail.haskell.org/pipermail/haskell/2009-March/021065.html)
   - [unsafeInterleaveIO docs](https://hackage.haskell.org/package/base-4.21.0.0/docs/System-IO-Unsafe.html#v:unsafeInterleaveIO)
