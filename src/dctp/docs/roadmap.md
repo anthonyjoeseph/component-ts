@@ -18,6 +18,9 @@
 - [denotative programming timeline](https://wiki.haskell.org/Denotative_programming_timeline)
 - [wikipedia - denotational semantics](https://en.m.wikipedia.org/wiki/Denotational_semantics)
 - [wikipedia - category theory timeline](https://en.wikipedia.org/wiki/Timeline_of_category_theory_and_related_mathematics)
+- [inventor of algebra](https://en.wikipedia.org/wiki/Al-Khwarizmi)
+- [inventor of variables](https://en.wikipedia.org/wiki/Brahmagupta#Mathematics)
+- [nested data parallelism in haskell](https://www.youtube.com/watch?v=kZkO3k9g1ps)
 
 - research previous attempts at denoting io
 
