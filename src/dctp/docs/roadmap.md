@@ -21,6 +21,16 @@
 - [inventor of algebra](https://en.wikipedia.org/wiki/Al-Khwarizmi)
 - [inventor of variables](https://en.wikipedia.org/wiki/Brahmagupta#Mathematics)
 - [nested data parallelism in haskell](https://www.youtube.com/watch?v=kZkO3k9g1ps)
+- [wiki.haskell - IO Semantics](https://wiki.haskell.org/IO_Semantics)
+- [a semantic framework for deterministic function io](https://publications.scss.tcd.ie/tech-reports/reports.06/TCD-CS-2006-19.pdf)
+- [lean language - denotational semantics](https://lean-forward.github.io/logical-verification/2018/33_notes.html)
+- [the formal semantics of programming languages](https://www.cin.ufpe.br/~if721/intranet/TheFormalSemanticsofProgrammingLanguages.pdf)
+- [tackling the awkward squad - spj](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/mark.pdf)
+- [Thorsten - Functional semantics for the awkward squad](https://people.cs.nott.ac.uk/psztxa/publ/beast.pdf)
+- [IO Monad as gadt (frp contributor Luke Palmer)](https://web.archive.org/web/20111016161358/http://lukepalmer.wordpress.com/2008/03/29/io-monad-the-continuation-presentation/)
+- [Wadler - How to Declare and Imperative (mind/body)](https://ics.uci.edu/~jajones/INF102-S18/readings/24_wadler)
+- [The Haskell programmer's guide to the IO Monad (Dont Panic)](https://stefan-klinger.de/files/monadGuide.pdf)
+- [How can denotational semantics be defined for imperative statements](https://langdev.stackexchange.com/questions/2646/how-can-denotational-semantics-be-defined-for-imperative-statements)
 
 - research previous attempts at denoting io
 
