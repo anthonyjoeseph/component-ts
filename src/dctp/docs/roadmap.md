@@ -1,3 +1,7 @@
+- detecting cycles in a directed graph
+
+  - https://stackoverflow.com/questions/8935323/detecting-cycles-of-a-graphmaybe-directed-or-undirected-in-haskell
+
 - fixed point iteration explanation
 
   - [use it for square roots](https://stackoverflow.com/questions/67478195/using-fixed-point-to-show-square-root/75264885#75264885)
