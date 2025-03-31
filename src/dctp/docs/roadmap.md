@@ -1,3 +1,25 @@
+- brouwer
+
+  - [art, life and mysticism](https://www.hermitary.com/solitude/brouwer.html)
+    - "Mysticism is the denial of knowledge"
+  - [Brouwer -- Hilbert controversy](https://www.youtube.com/watch?v=AFAmdfJtWIc)
+
+- [choice sequences as io](https://lists.chalmers.se/pipermail/agda/2011/003393.html)
+
+- [normalizing int in cubical agda (I guess its really hard)](https://proofassistants.stackexchange.com/questions/4662/how-to-normalize-int-in-cubical-agda)
+
+- [a denotational semantics implemented in agda](https://gist.github.com/bobatkey/52ea69e8ad83b438c5318346200ab4f0)
+
+- [homotological trinitarianism](https://ncatlab.org/nlab/files/ShulmanHomotopicalTrinitarianism.pdf)
+
+- [curry/howard and category theory](https://mhamilton.net/files/chl.pdf)
+
+- [intro to MLTT - what is a type?](https://cs.stackexchange.com/questions/14674/intro-to-martin-l%C3%B6f-type-theory/14686#14686)
+
+- Boolean Reasoning - Frank Markham Brown
+
+- [canonical form for algebraic numbers](https://math.stackexchange.com/questions/2529811/canonical-form-for-algebraic-numbers)
+
 - agda rewrite rules (syntax vs pragma)
 
   - [plfa - rewrite syntax](https://plfa.github.io/Equality/#rewriting)
