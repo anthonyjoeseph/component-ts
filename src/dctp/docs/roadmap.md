@@ -10,6 +10,8 @@
 
   - [coinduction](https://blog.ielliott.io/sized-types-and-coinduction-in-safe-agda)
   - [thorsten inf list](https://people.cs.nott.ac.uk/psztxa/g53cfr/l15.html/l15.html)
+    - this is ["old coinduction"](https://agda.readthedocs.io/en/latest/language/coinduction.html#old-coinduction)
+    - record syntax is preferred
 
 - detecting cycles in a directed graph
 
