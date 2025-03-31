@@ -1,5 +1,9 @@
-- [agda rewrite rules & canonicity](https://gallais.github.io/blog/canonical-structures-REWRITE.html)
+- agda rewrite rules (syntax vs pragma)
 
+  - [plfa - rewrite syntax](https://plfa.github.io/Equality/#rewriting)
+  - [syntax docs](https://agda.readthedocs.io/en/latest/language/with-abstraction.html#rewrite)
+  - [pragma docs](https://agda.readthedocs.io/en/latest/language/rewriting.html#rewrite-rules-by-example)
+  - [rewrite pragma re: canonicity](https://gallais.github.io/blog/canonical-structures-REWRITE.html)
   - [hw assignment](https://github.com/kaonn/agda-T-canonicity-dist)
 
 - [agda re: denotational semantics](https://semantic-domain.blogspot.com/2016/03/agda-is-not-purely-functional-language.html)
