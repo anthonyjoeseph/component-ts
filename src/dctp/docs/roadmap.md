@@ -178,7 +178,8 @@
     - is this useful to know what we're proving? aka what is contextual equivalence?
     - or is it mostly useful as a way to learn agda?
     - is this a good enough understanding?
-      - [the denotational semantics of programming languages - stratchey and scott](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=8805dca7369fddcfcfcb5f8ac8a9dcd3fd857930)
+      - [tutorial of denotational semantics - 1976](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=8805dca7369fddcfcfcb5f8ac8a9dcd3fd857930)
+      - [the actual paper - 1971](https://www.cs.cmu.edu/~crary/819-f09/Scott71.pdf)
   - [referential transparency, definiteness and unfoldability](https://www.itu.dk/~sestoft/papers/SondergaardSestoft1990.pdf)
     - might be helpful to know what equality "means" in some sense
   - [category: the essence of composition](https://bartoszmilewski.com/2014/11/04/category-the-essence-of-composition/)
