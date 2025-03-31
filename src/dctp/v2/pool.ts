@@ -38,11 +38,12 @@ const initialState: GameState = {
 
 const game: O<(time: Time) => [Position, Position, Position]> = playerInput.pipe(
   r.scan(
-    ([prevFrame, prevState], [time, input]): [Frame, GameState] => {
+    ([_, prevPrevState], [time, input]): [Frame, GameState] => {
       // preserve intermediary state
       // avoids a leak where 'prevFrame' is called recursively n times,
       // where n is the number of "inputs" emissions so far
-      return [getFrame(input, prevState), prevFrame(time)];
+      const prevState = getFrame(input, prevPrevState)(time);
+      return [getFrame(input, prevState), prevState];
     },
 
     // constant fn returning starting positions

@@ -1,3 +1,16 @@
+- [agda rewrite rules & canonicity](https://gallais.github.io/blog/canonical-structures-REWRITE.html)
+
+  - [hw assignment](https://github.com/kaonn/agda-T-canonicity-dist)
+
+- [agda re: denotational semantics](https://semantic-domain.blogspot.com/2016/03/agda-is-not-purely-functional-language.html)
+
+  > The simple story that we want to start with when teaching functional programming is that data types are sets, and computer functions are mathematical functions. In the presence of general recursion, though, this is a lie.
+
+- agda infinite lists
+
+  - [coinduction](https://blog.ielliott.io/sized-types-and-coinduction-in-safe-agda)
+  - [thorsten inf list](https://people.cs.nott.ac.uk/psztxa/g53cfr/l15.html/l15.html)
+
 - detecting cycles in a directed graph
 
   - https://stackoverflow.com/questions/8935323/detecting-cycles-of-a-graphmaybe-directed-or-undirected-in-haskell
