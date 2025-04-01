@@ -3,6 +3,11 @@
   - [art, life and mysticism](https://www.hermitary.com/solitude/brouwer.html)
     - "Mysticism is the denial of knowledge"
   - [Brouwer -- Hilbert controversy](https://www.youtube.com/watch?v=AFAmdfJtWIc)
+  - [whoops he's a nazi sympathizer](https://www.tabletmag.com/sections/arts-letters/articles/hitlers-math)
+  - [mathematics of the continuum](https://www.youtube.com/watch?v=WNAm7TH0iOw)
+    - "1689 Leibniz wondered how to captured this intuitive continuity mathematically. He wrote, 'There are two labyrinths of the human mind - one concerning the composition of the Continuum, and the other concerning the nature of freedom - and they arise from the same source - namely, infinity.' Now, as far as we know Brouwer never made an extensive study of Leibniz, but the solution to the question of the mathematical modeling of continuity that Brower came up with depended precisely on the other notion that Leibniz mentions - freedom."
+
+- [Set vs Type syntax in agda (they're the same)](https://proofassistants.stackexchange.com/a/4190)
 
 - [choice sequences as io](https://lists.chalmers.se/pipermail/agda/2011/003393.html)
 
@@ -23,10 +28,14 @@
 - agda rewrite rules (syntax vs pragma)
 
   - [plfa - rewrite syntax](https://plfa.github.io/Equality/#rewriting)
+    - referenced in slides from the 2021 talk:
+    - [racket redex](https://docs.racket-lang.org/redex/)
+    - [K reducer](https://fsl.cs.illinois.edu/publications/ellison-rosu-2012-popl.pdf)
   - [syntax docs](https://agda.readthedocs.io/en/latest/language/with-abstraction.html#rewrite)
   - [pragma docs](https://agda.readthedocs.io/en/latest/language/rewriting.html#rewrite-rules-by-example)
   - [rewrite pragma re: canonicity](https://gallais.github.io/blog/canonical-structures-REWRITE.html)
   - [hw assignment](https://github.com/kaonn/agda-T-canonicity-dist)
+  - [hack your type theory w/ rewrite rules](https://jesper.sikanda.be/posts/hack-your-type-theory.html)
 
 - [agda re: denotational semantics](https://semantic-domain.blogspot.com/2016/03/agda-is-not-purely-functional-language.html)
 
