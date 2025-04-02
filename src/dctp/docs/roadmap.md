@@ -1,15 +1,26 @@
 - brouwer
 
+  - [unreliability of logical principles](https://arxiv.org/pdf/1511.01113)
   - [art, life and mysticism](https://www.hermitary.com/solitude/brouwer.html)
     - "Mysticism is the denial of knowledge"
   - [Brouwer -- Hilbert controversy](https://www.youtube.com/watch?v=AFAmdfJtWIc)
   - [whoops he's a nazi sympathizer](https://www.tabletmag.com/sections/arts-letters/articles/hitlers-math)
   - [mathematics of the continuum](https://www.youtube.com/watch?v=WNAm7TH0iOw)
     - "1689 Leibniz wondered how to captured this intuitive continuity mathematically. He wrote, 'There are two labyrinths of the human mind - one concerning the composition of the Continuum, and the other concerning the nature of freedom - and they arise from the same source - namely, infinity.' Now, as far as we know Brouwer never made an extensive study of Leibniz, but the solution to the question of the mathematical modeling of continuity that Brower came up with depended precisely on the other notion that Leibniz mentions - freedom."
+  - [bishop quote](https://philosophy.stackexchange.com/questions/34108/what-does-mathematical-constructivism-gain-us-philosophically)
+    - "There is a crisis in contemporary mathematics, and anybody who has not noticed it is being willfully blind. The crisis is due to our neglect of philosophical issues...Every theorem proved with idealistic methods presents a challenge: to find a constructive version, and to give it a constructive proof... Very possibly classical mathematics will cease to exist as an independent discipline."
 
 - [Set vs Type syntax in agda (they're the same)](https://proofassistants.stackexchange.com/a/4190)
 
 - [choice sequences as io](https://lists.chalmers.se/pipermail/agda/2011/003393.html)
+
+  - [mathematics of infinity 1990 pg. 162](https://github.com/michaelt/martin-lof)
+  - [partial type theory and non-standard type theory](https://plato.stanford.edu/entries/type-theory-intuitionistic/#PartNonStanTypeTheo)
+    - "The types in partial type theory can be interpreted as Scott domains"
+    - I think it's basically LUB denotational semantics for types
+  - [Computability beyond Turing with Choice Sequences](https://pure-oai.bham.ac.uk/ws/portalfiles/portal/71146432/Computability_Beyond.pdf)
+
+- [choice axiom as heroin](https://youtu.be/DllYOFw5Qio?t=1973)
 
 - [normalizing int in cubical agda (I guess its really hard)](https://proofassistants.stackexchange.com/questions/4662/how-to-normalize-int-in-cubical-agda)
 
