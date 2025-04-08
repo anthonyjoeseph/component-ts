@@ -10,10 +10,22 @@
   - [bishop quote](https://philosophy.stackexchange.com/questions/34108/what-does-mathematical-constructivism-gain-us-philosophically)
     - "There is a crisis in contemporary mathematics, and anybody who has not noticed it is being willfully blind. The crisis is due to our neglect of philosophical issues...Every theorem proved with idealistic methods presents a challenge: to find a constructive version, and to give it a constructive proof... Very possibly classical mathematics will cease to exist as an independent discipline."
 
+- [linear lambda calculus in agda](https://oleg.fi/gists/posts/2018-07-12-llc-in-agda.html)
+
 - [Set vs Type syntax in agda (they're the same)](https://proofassistants.stackexchange.com/a/4190)
+
+- [type theories for reactive programming](https://pure.itu.dk/ws/portalfiles/portal/109067363/PhD_Thesis_Final_Version_Christian_Uldal_Graulund.pdf)
+
+- [sisyphys happy: coinduction, infinite data types slides](https://xavierleroy.org/CdF/2018-2019/9.pdf)
 
 - [choice sequences as io](https://lists.chalmers.se/pipermail/agda/2011/003393.html)
 
+  - [scala implm of selection function](https://antonkw.github.io/scala/selection-functions/)
+  - [slides re continuous fns and monadic streams](https://cs.ioc.ee/~tarmo/tsem14/capretta2603-slides.pdf)
+    - [monadic parametricity of second order functionals](https://d-nb.info/1046176048/34)
+    - [martin escardo continuum](https://martinescardo.github.io/papers/escardo-xu-inconsistency-continuity.pdf)
+    - [martin escardo mathstodon](https://mathstodon.xyz/@MartinEscardo/110685298245101293)
+    - [stream processors with nested fixed points](https://arxiv.org/pdf/0905.4813)
   - [mathematics of infinity 1990 pg. 162](https://github.com/michaelt/martin-lof)
   - [partial type theory and non-standard type theory](https://plato.stanford.edu/entries/type-theory-intuitionistic/#PartNonStanTypeTheo)
     - "The types in partial type theory can be interpreted as Scott domains"
