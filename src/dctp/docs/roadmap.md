@@ -1,3 +1,8 @@
+- Voevodsky
+
+  - ["i got scared"](https://www.math.ias.edu/~vladimir/Site3/Univalent_Foundations_files/2014_IAS.pdf)
+    - [video](https://www.youtube.com/watch?v=zw6NcwME7yI)
+
 - brouwer
 
   - [unreliability of logical principles](https://arxiv.org/pdf/1511.01113)
