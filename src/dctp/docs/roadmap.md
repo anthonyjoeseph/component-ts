@@ -1,3 +1,17 @@
+- [domain theory](https://en.wikipedia.org/wiki/Domain_theory)
+- [topos theory](https://ncatlab.org/nlab/show/topos)
+
+- Bertrand Russel
+
+  - [why I'm not a christian](https://users.drew.edu/~jlenz/whynot.html)
+
+- Frege
+
+  - https://en.wikipedia.org/wiki/Frege%27s_puzzles
+  - Beaney - The Analytic Revolution
+    - [paper](https://kings-qa.qa.elsevierpure.com/ws/portalfiles/portal/46912117/BeaneyAnalyticRevolution.pdf)
+    - [video](https://www.youtube.com/watch?v=QCwcFC3cfks&t=249s)
+
 - Voevodsky
 
   - ["i got scared"](https://www.math.ias.edu/~vladimir/Site3/Univalent_Foundations_files/2014_IAS.pdf)
