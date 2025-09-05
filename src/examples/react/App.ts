@@ -17,6 +17,8 @@ const view = c(
   ["readButton", () => e("button", ["onClick"], { children: "read text" })]
 );
 
+// TODO: these undefineds values shouldn't be here
+// part of the same work as above
 const model: CycleModel<typeof view> = (events) => {
   return {
     clickers: range(0, 4).map((i) => clickerModel(i)(events.clickers[i]!)),
