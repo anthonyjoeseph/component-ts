@@ -6,7 +6,7 @@ export type ShallowDefer<A> =
     ? () => Observable<O>
     : A extends Record<string, unknown>
       ? {
-          [K in keyof A]: K extends "value" ? () => string : ShallowDefer<A[K]>;
+          [K in keyof A]: K extends "value" ? A[K] : ShallowDefer<A[K]>;
         }
       : A extends (infer Arr)[]
         ? ShallowDefer<Arr>[]

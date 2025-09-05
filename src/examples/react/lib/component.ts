@@ -1,7 +1,5 @@
 import { createElement, type ReactNode, Fragment } from "react";
-import { pick, omit } from "lodash";
-import { Observable } from "rxjs";
-import * as r from "rxjs";
+import { omit } from "lodash";
 import { ShallowDefer } from "./cycle";
 
 export type RxComponent<Input, Events> = (p: Input) => [ReactNode, Events];

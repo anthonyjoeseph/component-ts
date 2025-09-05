@@ -7,9 +7,19 @@ import { clickerView, clickerModel } from "./components/clicker";
 
 const manyClickers = map(clickerView, ({ key }) => String(key));
 
+// TODO: functions that integrate with zod
+// to create a form a la react-hook-form
+
 // TODO: make things work equally nice with ReactNodes & with RxComponents
 // the thunk here feels extraneous
 // and it'd be nice to add plain ReactNodes to the list of children
+/**
+ * Really, there ought to be four kinds of RxComponent:
+ * - ReactNode
+ * - [ReactNode, Events]
+ * - (Input) => ReactNode
+ * - (Input) => [ReactNode, Events]
+ */
 const view = c(
   () => e("div", []),
   ["clickers", manyClickers],
