@@ -8,7 +8,9 @@ export type ShallowDefer<A> =
       ? {
           [K in keyof A]: ShallowDefer<A[K]>;
         }
-      : never;
+      : A extends (infer Arr)[]
+        ? ShallowDefer<Arr>[]
+        : never;
 
 export const cycle = <Input, Output extends object>(
   component: (input: Input) => [ReactNode, Output],
@@ -18,11 +20,9 @@ export const cycle = <Input, Output extends object>(
   const recurse = (path: string[]) =>
     new Proxy<ShallowDefer<Output>>((() => {}) as unknown as ShallowDefer<Output>, {
       get: (target, property, _receiver) => {
-        console.log("recursing", path, property);
         return recurse([...path, property as string]) as any;
       },
       apply: (_target, _thisArg, _argArray) => {
-        console.log("applying", path);
         return defer(() => {
           let obs: any = eventualOutput;
           for (const prop of path) {
