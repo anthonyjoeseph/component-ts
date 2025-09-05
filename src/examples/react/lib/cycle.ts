@@ -6,7 +6,7 @@ export type ShallowDefer<A> =
     ? () => Observable<O>
     : A extends Record<string, unknown>
       ? {
-          [K in keyof A]: ShallowDefer<A[K]>;
+          [K in keyof A]: K extends "value" ? () => string : ShallowDefer<A[K]>;
         }
       : A extends (infer Arr)[]
         ? ShallowDefer<Arr>[]
@@ -23,6 +23,13 @@ export const cycle = <Input, Output extends object>(
         return recurse([...path, property as string]) as any;
       },
       apply: (_target, _thisArg, _argArray) => {
+        if (path[path.length - 1] === "value") {
+          let obs: any = eventualOutput;
+          for (const prop of path) {
+            obs = obs[prop];
+          }
+          return obs;
+        }
         return defer(() => {
           let obs: any = eventualOutput;
           for (const prop of path) {

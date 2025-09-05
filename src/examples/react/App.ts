@@ -1,3 +1,4 @@
+import * as r from "rxjs";
 import { range } from "lodash";
 import { element as e } from "./lib/element";
 import { cycle } from "./lib/cycle";
@@ -7,13 +8,31 @@ import { clickerView, clickerModel } from "./components/clicker";
 const manyClickers = map(clickerView, ({ key }) => String(key));
 
 // TODO: make things work equally nice with ReactNodes & with RxComponents
-// 'includingChildren' here is no good
-const view = c((includingChildren: unknown) => e("div", [], includingChildren as any), ["clickers", manyClickers]);
+// the thunk here feels extraneous
+// and it'd be nice to add plain ReactNodes to the list of children
+const view = c(
+  () => e("div", []),
+  ["clickers", manyClickers],
+  ["text", () => e("textarea", ["value"])],
+  ["readButton", () => e("button", ["onClick"], { children: "read text" })]
+);
 
-const model: CycleModel<typeof view> = (events) => ({
-  clickers: range(0, 4).map((i) => clickerModel(i)(events.clickers[i]!)),
-});
+const model: CycleModel<typeof view> = (events) => {
+  return {
+    clickers: range(0, 4).map((i) => clickerModel(i)(events.clickers[i]!)),
+    readButton: undefined,
+    text: undefined,
+  };
+};
 
-const [appNode] = cycle(view, model);
+const [appNode, events] = cycle(view, model);
+
+events.readButton.onClick
+  .pipe(
+    r.tap(() => {
+      alert(events.text.value());
+    })
+  )
+  .subscribe();
 
 export const App = appNode;

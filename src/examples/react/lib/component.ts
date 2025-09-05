@@ -79,8 +79,19 @@ export const children = <
     });
     const childEvents = Object.fromEntries(childNodesAndEvents.map(([key, [, events]]) => [key, events]));
 
-    const [parentNode, parentEvents] = parent({ ...parentInputs, children: childNodes } as any);
+    const [parentNode, parentEvents] = parent(parentInputs as never);
+    const parentNodeWithChildren =
+      parentNode != null && typeof parentNode === "object" && "props" in parentNode
+        ? {
+            ...parentNode,
+            props: {
+              ...parentNode.props,
+              children: childNodes,
+            },
+          }
+        : parentNode;
+
     const allEvents = { ...parentEvents, ...childEvents };
-    return [parentNode, allEvents as any];
+    return [parentNodeWithChildren, allEvents as never];
   };
 };
