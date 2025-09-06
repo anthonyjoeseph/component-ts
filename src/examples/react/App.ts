@@ -1,48 +1,43 @@
 import * as r from "rxjs";
 import { range } from "lodash";
-import { element as e } from "./lib/element";
-import { cycle } from "./lib/cycle";
-import { children as c, CycleModel, map } from "./lib/component";
-import { clickerView, clickerModel } from "./components/clicker";
+import { component as e, inputComponent as ie } from "./lib/component";
+import { cycle, CycleModel } from "./lib/cycle";
+import { keyChildren as kc, map } from "./lib/children";
+import { clicker } from "./components/clicker";
+import { Observable } from "rxjs";
 
-const manyClickers = map(clickerView, ({ key }) => String(key));
-
-// TODO: functions that integrate with zod
-// to create a form a la react-hook-form
-
-// TODO: make things work equally nice with ReactNodes & with RxComponents
-// the thunk here feels extraneous
-// and it'd be nice to add plain ReactNodes to the list of children
-/**
- * Really, there ought to be four kinds of RxComponent:
- * - ReactNode
- * - [ReactNode, Events]
- * - (Input) => ReactNode
- * - (Input) => [ReactNode, Events]
- */
-const view = c(
-  () => e("div", []),
-  ["clickers", manyClickers],
-  ["text", () => e("textarea", ["value"])],
-  ["readButton", () => e("button", ["onClick"], { children: "read text" })]
+const view = kc(
+  e("div"),
+  ["clickers", map(clicker, ({ key }) => String(key))],
+  ["text", e("input", ["ref", "onKeyPress"], { type: "text" })],
+  ["readButton", e("button", ["onClick"], { children: "read text" })]
 );
 
-// TODO: these undefineds values shouldn't be here
-// part of the same work as above
-const model: CycleModel<typeof view> = (events) => {
+const model: CycleModel<
+  typeof view,
+  { readButtonClick: Observable<unknown>; textEnterPressed: Observable<unknown>; getText: () => string }
+> = (events) => {
   return {
-    clickers: range(0, 4).map((i) => clickerModel(i)(events.clickers[i]!)),
-    readButton: undefined,
-    text: undefined,
+    input: {
+      clickers: range(0, 4).map((key) => ({ key })),
+    },
+    output: {
+      readButtonClick: events.readButton.onClick(),
+      textEnterPressed: events.text.onKeyPress().pipe(r.filter((k) => k.key === "Enter")),
+      getText: () => {
+        const ref = events.text.ref();
+        return ref.value as string;
+      },
+    },
   };
 };
 
 const [appNode, events] = cycle(view, model);
 
-events.readButton.onClick
+r.merge(events.readButtonClick, events.textEnterPressed)
   .pipe(
     r.tap(() => {
-      alert(events.text.value());
+      alert(events.getText());
     })
   )
   .subscribe();

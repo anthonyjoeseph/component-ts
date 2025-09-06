@@ -1,37 +1,43 @@
 import { ReactNode } from "react";
 import { Observable, defer } from "rxjs";
+import { ComponentEvents, ComponentInput, RxComponent } from "./component";
+
+export type CycleModel<C extends RxComponent<any, any>, Output = null> = (events: ShallowDefer<ComponentEvents<C>>) => {
+  input: ComponentInput<C>;
+  output: Output;
+};
 
 export type ShallowDefer<A> =
   A extends Observable<infer O>
     ? () => Observable<O>
     : A extends Record<string, unknown>
       ? {
-          [K in keyof A]: K extends "value" ? A[K] : ShallowDefer<A[K]>;
+          [K in keyof A]: K extends "ref" ? A[K] : ShallowDefer<A[K]>;
         }
       : A extends (infer Arr)[]
         ? ShallowDefer<Arr>[]
         : never;
 
-export const cycle = <Input, Output extends object>(
-  component: (input: Input) => [ReactNode, Output],
-  program: (output: ShallowDefer<Output>) => Input
+export const cycle = <Input, Events extends object, Output>(
+  component: RxComponent<Input, Events>,
+  program: (output: ShallowDefer<Events>) => { input: Input; output: Output }
 ): [ReactNode, Output] => {
-  let eventualOutput: Output;
+  let deferredEvents: Events;
   const recurse = (path: string[]) =>
-    new Proxy<ShallowDefer<Output>>((() => {}) as unknown as ShallowDefer<Output>, {
-      get: (target, property, _receiver) => {
+    new Proxy(() => {}, {
+      get: (_target, property, _receiver) => {
         return recurse([...path, property as string]) as any;
       },
-      apply: (_target, _thisArg, _argArray) => {
-        if (path[path.length - 1] === "value") {
-          let obs: any = eventualOutput;
+      apply: (_target, _thisArg, argArray) => {
+        if (path[path.length - 1] === "ref") {
+          let obs: any = deferredEvents;
           for (const prop of path) {
             obs = obs[prop];
           }
-          return obs;
+          return obs(...argArray);
         }
         return defer(() => {
-          let obs: any = eventualOutput;
+          let obs: any = deferredEvents;
           for (const prop of path) {
             obs = obs[prop];
           }
@@ -39,7 +45,10 @@ export const cycle = <Input, Output extends object>(
         });
       },
     });
-  const retval = component(program(recurse([])));
-  eventualOutput = retval[1];
-  return retval;
+
+  let programInput = recurse([]) as never;
+  const runProgram = program(programInput);
+  const [node, events] = component(runProgram.input);
+  deferredEvents = events;
+  return [node, runProgram.output] as [ReactNode, Output];
 };
