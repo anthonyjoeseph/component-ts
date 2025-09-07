@@ -1,6 +1,6 @@
 // & is slow, this is faster
 export type FastAnd<A, B> = {
-  [K in keyof A | keyof B]: K extends keyof A ? A[K] : K extends keyof B ? B[K] : never;
+  [K in keyof A | keyof B]: K extends keyof B ? B[K] : K extends keyof A ? A[K] : never;
 };
 
 // built on the idea that `[number | string] extends [number]` is false

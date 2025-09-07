@@ -1,56 +1,47 @@
-import { component as e, inputComponent as ie } from "./lib/component";
-import { keyChildren as kc, mergeChildren as mc } from "./lib/children";
+import { component as c, inputComponent as ic } from "./lib/component";
+import { keyedSiblings as ks, mergeSiblings as ms } from "./lib/siblings";
 import * as r from "rxjs";
-import { cycle } from "./lib/cycle";
-import * as R from "fp-ts/Record";
-import { pipe } from "fp-ts/function";
-import { omit } from "lodash";
 import * as z from "zod";
 import { formComponent, getFormValues, partitionObservable, splitObservable, validateNestedEither } from "./lib/form";
+import { omit } from "lodash";
+import { pipe } from "fp-ts/function";
+import * as R from "fp-ts/Record";
 
-const errLabel = ie("div", { style: { color: "red" } })<"children">;
+const errLabel = () => ic("div", { style: { color: "red" } })(["children"]);
 
-const wholeForm = kc(
-  e("div"),
-  ["name", formComponent(z.string(), mc(e("div"), [e("input", ["ref"], { type: "text" }), errLabel]))],
+const [events, { getNode, inputKeys }] = ks(
+  ["name", formComponent(z.string(), ms(c("input", ["ref"], { type: "text", defaultValue: "ant jofis" }), errLabel()))],
   [
     "newPassword",
-    formComponent(z.string().min(6).max(10), mc(e("div"), [e("input", ["ref"], { type: "password" }), errLabel])),
+    formComponent(
+      z.string().min(6).max(10),
+      ms(c("input", ["ref"], { type: "password", defaultValue: "admin" }), errLabel())
+    ),
   ],
-  ["age", formComponent(z.coerce.number(), mc(e("div"), [e("input", ["ref"], { type: "number" }), errLabel]))],
-  ["submit", e("button", ["onClick"], { children: "submit" })]
+  [
+    "age",
+    formComponent(z.coerce.number(), ms(c("input", ["ref"], { type: "number", defaultValue: "64" }), errLabel())),
+  ],
+  ["submit", c("button", ["onClick"], { children: "submit" })]
 );
 
-const [appNode, events] = cycle(wholeForm, (events) => {
-  const inputStream = events.submit.onClick().pipe(
-    r.map(() => {
-      const a = events as Omit<typeof events, "submit">;
-      const b = {
-        name: events.name.ref().value,
-        newPassword: events.newPassword.ref().value,
-        age: events.age.ref().value,
-      };
-      const c = validateNestedEither(b);
-      return c;
-    })
-  );
-  const { left, right } = partitionObservable(inputStream);
-  const inputs = pipe(
-    splitObservable(left),
-    R.map((children) => ({ children }))
-  );
-  return {
-    input: {
-      ...inputs,
-      submit: undefined,
-    },
-    output: {
-      formValues: right,
-    },
-  };
-});
+const inputStream = events.submit.onClick.pipe(
+  r.map(() => {
+    const a = omit(events, ["submit"]);
+    const b = getFormValues(a);
+    const c = validateNestedEither(b);
+    return c;
+  })
+);
+const { left, right: formValues } = partitionObservable(inputStream);
+const splitLeft = splitObservable(left, inputKeys);
 
-events.formValues
+const inputs = pipe(
+  splitLeft,
+  R.map((children) => ({ children }))
+);
+
+formValues
   .pipe(
     r.tap((values) => {
       alert(JSON.stringify(values));
@@ -58,4 +49,4 @@ events.formValues
   )
   .subscribe();
 
-export const App = appNode;
+export const App = getNode(inputs);

@@ -1,22 +1,17 @@
 import * as r from "rxjs";
-import { inputComponent as ie } from "../lib/component";
-import { cycle } from "../lib/cycle";
+import { inputComponent as ie, RxComponent } from "../lib/component";
 
-export const clicker = (_: { key: number }) =>
-  cycle(
-    ie("button", ["onClick"], {
-      style: { fontSize: 30 },
-    })<"children">,
-    (events) => {
-      const numClicks = events.onClick().pipe(
-        r.startWith(0),
-        r.scan((acc) => acc + 1, -1)
-      );
-      return {
-        input: {
-          children: numClicks,
-        },
-        output: { numClicks },
-      };
-    }
+export const clicker = (): RxComponent<{}, { numClicks: r.Observable<number> }> => {
+  const [events, { getNode }] = ie("button", ["onClick"], {
+    style: { fontSize: 30 },
+  })(["children"]);
+
+  const numClicks = events.onClick.pipe(
+    r.startWith(0),
+    r.scan((acc) => acc + 1, -1)
   );
+
+  const node = getNode({ children: numClicks });
+
+  return [{ numClicks }, { getNode: () => node, inputKeys: [] }];
+};

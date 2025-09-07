@@ -1,45 +1,30 @@
 import * as r from "rxjs";
 import { range } from "lodash";
-import { component as e, inputComponent as ie } from "./lib/component";
-import { cycle, CycleModel } from "./lib/cycle";
-import { keyChildren as kc, map } from "./lib/children";
+import { component as c, inputComponent as ic } from "./lib/component";
+import { keyedSiblings as ks } from "./lib/siblings";
 import { clicker } from "./components/clicker";
-import { Observable } from "rxjs";
+import { Key } from "ts-key-enum";
+import { child } from "./lib/child";
 
-const view = kc(
-  e("div"),
-  ["clickers", map(clicker, ({ key }) => String(key))],
-  ["text", e("input", ["ref", "onKeyPress"], { type: "text" })],
-  ["readButton", e("button", ["onClick"], { children: "read text" })]
+const view = child(
+  c("div"),
+  ks(
+    ["clickers", clicker()],
+    ["text", c("input", ["ref", "onKeyPress"], { type: "text" })],
+    ["readButton", c("button", ["onClick"], { children: "read text" })]
+  )
 );
 
-const model: CycleModel<
-  typeof view,
-  { readButtonClick: Observable<unknown>; textEnterPressed: Observable<unknown>; getText: () => string }
-> = (events) => {
-  return {
-    input: {
-      clickers: range(0, 4).map((key) => ({ key })),
-    },
-    output: {
-      readButtonClick: events.readButton.onClick(),
-      textEnterPressed: events.text.onKeyPress().pipe(r.filter((k) => k.key === "Enter")),
-      getText: () => {
-        const ref = events.text.ref();
-        return ref.value as string;
-      },
-    },
-  };
-};
+const [events, { getNode }] = view;
 
-const [appNode, events] = cycle(view, model);
-
-r.merge(events.readButtonClick, events.textEnterPressed)
+r.merge(events.readButton.onClick, events.text.onKeyPress.pipe(r.filter((k) => k.key === Key.Enter)))
   .pipe(
     r.tap(() => {
-      alert(events.getText());
+      alert(events.text.ref().value as string);
     })
   )
   .subscribe();
 
-export const App = appNode;
+export const App = getNode({
+  clickers: { key: 0 },
+});
