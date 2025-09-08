@@ -107,11 +107,3 @@ export const splitObservable = <A extends Record<string | symbol, unknown>>(
     )
   ) as { [K in keyof A]-?: Observable<NonNullable<A[K]>> };
 };
-
-export const lazyMap = <K extends string, A, B>(fa: Record<K, A>, fn: (a: A) => B): Record<K, B> => {
-  return new Proxy<Record<K, B>>(fa as unknown as Record<K, B>, {
-    get: (target, property, _receiver) => {
-      return fn((target as any)[property]);
-    },
-  });
-};

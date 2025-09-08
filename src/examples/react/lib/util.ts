@@ -31,3 +31,5 @@ export type FastUnionToIntersection<A> = {
     ? FastUnionToIntersection<A[K]>
     : (A extends any ? (K extends keyof A ? A : never) : never)[K];
 };
+
+export type NonEmptyArray<A> = [A, ...A[]];

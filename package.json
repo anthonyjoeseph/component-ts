@@ -6,7 +6,7 @@
   "scripts": {
     "node": "nodemon src/index-node.ts",
     "browser": "parcel src/index.html",
-    "browser-react": "parcel src/examples/react/experiment.html --no-cache",
+    "browser-react": "parcel src/examples/react/client-side/experiment.html --no-cache",
     "dev": "concurrently --kill-others \"npm run node\" \"npm run browser\"",
     "test": "tsx --test",
     "test-watch": "tsx --test --watch",

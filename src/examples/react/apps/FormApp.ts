@@ -1,11 +1,14 @@
-import { component as c, inputComponent as ic } from "./lib/component";
-import { keyedSiblings as ks, mergeSiblings as ms } from "./lib/siblings";
+import { component as c, inputComponent as ic, RxComponent } from "../lib/component";
+import { keyedSiblings as ks, mergeSiblings as ms } from "../lib/siblings";
 import * as r from "rxjs";
 import * as z from "zod";
-import { formComponent, getFormValues, partitionObservable, splitObservable, validateNestedEither } from "./lib/form";
-import { omit } from "lodash";
+import { formComponent, getFormValues, partitionObservable, splitObservable, validateNestedEither } from "../lib/form";
+import { omit, pick } from "lodash";
 import { pipe } from "fp-ts/function";
 import * as R from "fp-ts/Record";
+import { Either } from "fp-ts/lib/Either";
+
+type NewFormComponent<A> = RxComponent<{ errors: string[] }, { value: () => Either<string[], A> }>;
 
 const errLabel = () => ic("div", { style: { color: "red" } })(["children"]);
 
@@ -27,7 +30,7 @@ const [events, { getNode, inputKeys }] = ks(
 
 const inputStream = events.submit.onClick.pipe(
   r.map(() => {
-    const a = omit(events, ["submit"]);
+    const a = pick(events, inputKeys);
     const b = getFormValues(a);
     const c = validateNestedEither(b);
     return c;

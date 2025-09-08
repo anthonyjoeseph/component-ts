@@ -1,26 +1,6 @@
 import { createElement, Fragment, ReactNode } from "react";
 import { ComponentEvents, ComponentInput, InputFn, RxComponent } from "./component";
-import { FastUnionToIntersection } from "./util";
-
-/* export const map = <Input, Events>(
-  component: () => RxComponent<Input, Events>,
-  getKey: (input: Input) => string
-): RxComponent<Input[], Events[]> => {
-  const eventualEvents: Events[] = [];
-  const getAllNode = (inputs) => {
-    const all = inputs.map((input, index): ReactNode => {
-      const [events, getNode] = component();
-      eventualEvents.push(events);
-      const node = getNode(input);
-      if (node != null && typeof node === "object" && "props" in node) {
-        return { ...node, key: getKey ? getKey(input) : String(index) };
-      }
-      return node;
-    });
-    return createElement(Fragment, { children: all });
-  };
-  return [eventualEvents, {...getAllNode, inputKeys:  },];
-}; */
+import { FastAnd, FastUnionToIntersection } from "./util";
 
 export type AllInputs<
   ChildKeys extends string[],
