@@ -6,7 +6,11 @@
   "scripts": {
     "node": "nodemon src/index-node.ts",
     "browser": "parcel src/index.html",
-    "browser-react": "parcel src/examples/react/client-side/experiment.html --no-cache",
+    "browser-react": "parcel src/examples/react/client-side/index.html",
+    "browser-static-build": "tsx src/examples/react/static-render/generate.ts",
+    "browser-static": "parcel src/examples/react/static-render/index.html",
+    "browser-ssr-server": "tsx watch src/examples/react/server-side/server-index.ts",
+    "browser-ssr": "parcel watch src/examples/react/server-side/client-index.tsx --port 1235 --dist-dir dist-ssr",
     "dev": "concurrently --kill-others \"npm run node\" \"npm run browser\"",
     "test": "tsx --test",
     "test-watch": "tsx --test --watch",
@@ -19,6 +23,7 @@
   "license": "ISC",
   "dependencies": {
     "deep-equal": "^2.2.3",
+    "express": "^5.1.0",
     "fast-array-diff": "^1.1.0",
     "fast-check": "^3.21.0",
     "fp-ts": "^2.16.9",
@@ -38,6 +43,7 @@
   },
   "devDependencies": {
     "@types/deep-equal": "^1.0.4",
+    "@types/express": "^5.0.3",
     "@types/lodash": "^4.14.191",
     "@types/node": "^22.10.1",
     "@types/parcel-env": "^0.0.9",

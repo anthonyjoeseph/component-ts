@@ -7,8 +7,9 @@ import { NonEmptyArray } from "./util";
 import { omit } from "lodash";
 import { arrayDiffEq } from "../../../lib/array/diff";
 import { applyAction, mapDomAction, SafeDOMAction } from "../../../lib/array/domAction";
-import { pipe } from "fp-ts/lib/function";
 
+// Maybe there's a way to do this w/o doing our own diff?
+// If the events are stored as react state in `component.ts` maybe? And accessible as a prop?
 export const asyncMapNonEmpty = <Input, Events>(
   component: () => RxComponent<Input, Events>
 ): RxComponent<
