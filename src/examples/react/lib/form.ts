@@ -1,4 +1,4 @@
-import { ComponentEvents, ComponentInput, component as e, inputComponent as ie, RxComponent } from "./component";
+import { RxComponent } from "./component";
 import { type Observable } from "rxjs";
 import * as r from "rxjs";
 import { ReactNode } from "react";
@@ -19,29 +19,29 @@ export const formComponent = <
 >(
   schema: z.ZodType<A>,
   [events, getNode]: RxComponent<Input, Events>
-): RxComponent<Input, ShallowAnd<Events, { ref: () => { value: Either<string[], A> } }>> => {
+): RxComponent<Input, ShallowAnd<Events, { getValue: () => Either<string[], A> }>> => {
   return [
     {
       ...events,
-      ref: () => {
+      getValue: () => {
         const ref = events.ref();
         const result = schema.safeParse(ref.value);
         if (result.success) {
-          return { ...ref, value: E.right(result.data) };
+          return E.right(result.data);
         }
-        return { ...ref, value: E.left(result.error.issues.map((i) => i.message)) };
+        return E.left(result.error.issues.map((i) => i.message));
       },
-    } as ShallowAnd<Events, { ref: () => { value: Either<string[], A> } }>,
+    } as ShallowAnd<Events, { getValue: () => Either<string[], A> }>,
     getNode,
   ];
 };
 
-export const getFormValues = <A extends Record<string, { ref: () => { value: unknown } }>>(a: A) => {
+export const getFormValues = <A extends Record<string, { getValue: () => unknown }>>(a: A) => {
   return pipe(
     a,
-    R.map((a) => a.ref().value)
+    R.map((a) => a.getValue())
   ) as {
-    [K in keyof A]: ReturnType<A[K]["ref"]>["value"];
+    [K in keyof A]: ReturnType<A[K]["getValue"]>;
   };
 };
 

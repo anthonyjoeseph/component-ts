@@ -1,5 +1,5 @@
 import { createElement, Fragment, ReactNode } from "react";
-import { component, ComponentEvents, ComponentInput, inputComponent, InputFn, RxComponent } from "./component";
+import { component, ComponentEvents, ComponentInput, InputFn, RxComponent } from "./component";
 import { ShallowUnionToIntersection } from "./util";
 
 type HasKeys<A> = keyof A extends never ? false : true;
@@ -72,7 +72,4 @@ export const mergeSiblings = <Children extends RxComponent<any, any>[]>(
   ];
 };
 
-export const simpleSiblings = (...siblings: RxComponent<{}, {}>[]): RxComponent<{}, {}> => {
-  const a = mergeSiblings(...siblings);
-  return a;
-};
+export const simpleSiblings: (...siblings: RxComponent<{}, {}>[]) => RxComponent<{}, {}> = mergeSiblings;

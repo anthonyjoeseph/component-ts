@@ -1,4 +1,4 @@
-import { component as c, inputComponent as ic, RxComponent } from "../lib/component";
+import { component as c, RxComponent } from "../lib/component";
 import { keyedSiblings as ks, mergeSiblings as ms } from "../lib/siblings";
 import * as r from "rxjs";
 import * as z from "zod";
@@ -10,16 +10,19 @@ import { Either } from "fp-ts/lib/Either";
 
 type NewFormComponent<A> = RxComponent<{ errors: string[] }, { value: () => Either<string[], A> }>;
 
-const errLabel = () => ic("div", { style: { color: "red" } })(["children"]);
+const errLabel = () => c("div", ["children"], { style: { color: "red" } });
 
 const [events, { getNode, inputKeys }] = ks({
-  name: formComponent(z.string(), ms(c("input", ["ref"], { type: "text", defaultValue: "ant jofis" }), errLabel())),
+  name: formComponent(z.string(), ms(c("input", [], ["ref"], { type: "text", defaultValue: "ant jofis" }), errLabel())),
   newPassword: formComponent(
     z.string().min(6).max(10),
-    ms(c("input", ["ref"], { type: "password", defaultValue: "admin" }), errLabel())
+    ms(c("input", [], ["ref"], { type: "password", defaultValue: "admin" }), errLabel())
   ),
-  age: formComponent(z.coerce.number(), ms(c("input", ["ref"], { type: "number", defaultValue: "64" }), errLabel())),
-  submit: c("button", ["onClick"], { children: "submit" }),
+  age: formComponent(
+    z.coerce.number(),
+    ms(c("input", [], ["ref"], { type: "number", defaultValue: "64" }), errLabel())
+  ),
+  submit: c("button", [], ["onClick"], { children: "submit" }),
 });
 
 const inputStream = events.submit.onClick.pipe(

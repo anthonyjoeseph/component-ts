@@ -1,15 +1,15 @@
 import * as r from "rxjs";
 import range from "lodash/range";
-import { component as c, inputComponent as ic, RxComponent } from "../lib/component";
+import { component as c, RxComponent } from "../lib/component";
 import { keyedSiblings as ks } from "../lib/siblings";
 import { Key } from "ts-key-enum";
-import { child } from "../lib/child";
 import { asyncMap } from "../lib/async";
 
 export const clicker = (): RxComponent<{}, { numClicks: r.Observable<number> }> => {
-  const [events, { getNode }] = ic("button", ["onClick"], {
-    style: { fontSize: 30 },
-  })(["children"]);
+  const [events, { getNode }] = c("button", ["children"], ["onClick"], {
+    style: { fontSize: 12 },
+    children: 0,
+  });
 
   const numClicks = events.onClick.pipe(
     r.startWith(0),
@@ -21,12 +21,12 @@ export const clicker = (): RxComponent<{}, { numClicks: r.Observable<number> }> 
   return [{ numClicks }, { getNode: () => node, inputKeys: [] }];
 };
 
-const view = child(
-  c("div"),
+const view = c(
+  "div",
   ks({
     clickers: asyncMap(clicker),
-    text: c("input", ["ref", "onKeyPress"], { type: "text" }),
-    readButton: c("button", ["onClick"], { children: "read text" }),
+    text: c("input", [], ["ref", "onKeyPress"], { type: "text" }),
+    readButton: c("button", [], ["onClick"], { children: "read text" }),
   })
 );
 
