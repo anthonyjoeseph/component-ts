@@ -1,9 +1,12 @@
 import { FC, type ReactNode, createElement, useEffect, useRef } from "react";
 import { type Observable, Subject, filter, map, EMPTY, isObservable } from "rxjs";
 import { useObservableState } from "observable-hooks";
-import { pick } from "lodash";
+import pick from "lodash/pick";
 
-export type RxComponent<Input, Events> = [Events, InputFn<Input>];
+export type RxComponent<Input extends Record<string, unknown>, Events extends Record<string, unknown>> = [
+  Events,
+  InputFn<Input>,
+];
 
 export type ComponentInput<C extends RxComponent<any, any>> = Parameters<C[1]["getNode"]>[0];
 

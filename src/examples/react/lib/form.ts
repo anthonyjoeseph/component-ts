@@ -7,15 +7,19 @@ import * as E from "fp-ts/Either";
 import * as R from "fp-ts/Record";
 import { identity, pipe } from "fp-ts/function";
 import { z } from "zod";
-import { FastAnd } from "./util";
+import { ShallowAnd } from "./util";
 
 export type FormComponent<E, A> = (input: { error: Observable<E> }) => [ReactNode, { ref: () => Either<E, A> }];
 R.map;
 
-export const formComponent = <A, Input, Events extends { ref: () => { value?: unknown } }>(
+export const formComponent = <
+  A,
+  Input extends Record<string, unknown>,
+  Events extends { ref: () => { value?: unknown } },
+>(
   schema: z.ZodType<A>,
   [events, getNode]: RxComponent<Input, Events>
-): RxComponent<Input, FastAnd<Events, { ref: () => { value: Either<string[], A> } }>> => {
+): RxComponent<Input, ShallowAnd<Events, { ref: () => { value: Either<string[], A> } }>> => {
   return [
     {
       ...events,
@@ -27,7 +31,7 @@ export const formComponent = <A, Input, Events extends { ref: () => { value?: un
         }
         return { ...ref, value: E.left(result.error.issues.map((i) => i.message)) };
       },
-    } as FastAnd<Events, { ref: () => { value: Either<string[], A> } }>,
+    } as ShallowAnd<Events, { ref: () => { value: Either<string[], A> } }>,
     getNode,
   ];
 };

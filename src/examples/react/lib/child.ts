@@ -1,16 +1,21 @@
 import { RxComponent } from "./component";
-import { FastAnd } from "./util";
+import { ShallowAnd } from "./util";
 
-export const child = <ParentInput, ParentEvents, ChildInput, ChildEvents>(
+export const child = <
+  ParentInput extends Record<string, unknown>,
+  ParentEvents extends Record<string, unknown>,
+  ChildInput extends Record<string, unknown>,
+  ChildEvents extends Record<string, unknown>,
+>(
   parent: RxComponent<ParentInput, ParentEvents>,
   child: RxComponent<ChildInput, ChildEvents>
-): RxComponent<FastAnd<ParentInput, ChildInput>, FastAnd<ParentEvents, ChildEvents>> => {
+): RxComponent<ShallowAnd<ParentInput, ChildInput>, ShallowAnd<ParentEvents, ChildEvents>> => {
   const [parentEvents, { getNode: getParentNode, inputKeys: parentInputKeys }] = parent;
   const [childEvents, { getNode: getChildNode, inputKeys: childInputKeys }] = child;
 
-  const getNode = (input: FastAnd<ParentInput, ChildInput>) => {
-    const parentNode = getParentNode(input as ParentInput);
-    const childNode = getChildNode(input as ChildInput);
+  const getNode = (input: ShallowAnd<ParentInput, ChildInput>) => {
+    const parentNode = getParentNode(input as unknown as ParentInput);
+    const childNode = getChildNode(input as unknown as ChildInput);
     const parentNodeWithChildren =
       parentNode != null && typeof parentNode === "object" && "props" in parentNode
         ? {
@@ -31,7 +36,7 @@ export const child = <ParentInput, ParentEvents, ChildInput, ChildEvents>(
   };
 
   return [
-    { ...parentEvents, ...childEvents } as FastAnd<ParentEvents, ChildEvents>,
-    { getNode, inputKeys: [...parentInputKeys, ...childInputKeys] },
+    { ...parentEvents, ...childEvents } as ShallowAnd<ParentEvents, ChildEvents>,
+    { getNode, inputKeys: [...parentInputKeys, ...childInputKeys] as (keyof ShallowAnd<ParentInput, ChildInput>)[] },
   ];
 };

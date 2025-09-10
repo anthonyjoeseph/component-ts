@@ -3,17 +3,13 @@ import { RxComponent } from "./component";
 import { Observable } from "rxjs";
 import * as r from "rxjs";
 import { useObservableState } from "observable-hooks";
-import { NonEmptyArray } from "./util";
-import { omit } from "lodash";
-import { arrayDiffEq } from "../../../lib/array/diff";
-import { applyAction, mapDomAction, SafeDOMAction } from "../../../lib/array/domAction";
+import { ShallowAnd, NonEmptyArray } from "./util";
+import omit from "lodash/omit";
 
-// Maybe there's a way to do this w/o doing our own diff?
-// If the events are stored as react state in `component.ts` maybe? And accessible as a prop?
-export const asyncMapNonEmpty = <Input, Events>(
+export const asyncMapNonEmpty = <Input extends Record<string, unknown>, Events extends Record<string, unknown>>(
   component: () => RxComponent<Input, Events>
 ): RxComponent<
-  { map: Observable<NonEmptyArray<Input & { key: string }>> },
+  { map: Observable<NonEmptyArray<ShallowAnd<Input, { key: string }>>> },
   { map: Observable<NonEmptyArray<Events>> }
 > => {
   const pushEvents = new r.Subject<NonEmptyArray<Events>>();
@@ -24,55 +20,39 @@ export const asyncMapNonEmpty = <Input, Events>(
     {
       getNode: ({ map }) => {
         const StreamingFragment: FC = () => {
-          const asyncEvents = useRef<Events[]>([]);
+          const prevEventsByKey = useRef<Record<string, Events>>({});
           const [asyncChildren, setAsyncChildren] = useState<ReactNode[]>([]);
-          const prevInput = useRef<NonEmptyArray<Input & { key: string }> | null>(null);
           const childInputs = useObservableState(map);
           useEffect(() => {
             if (childInputs !== undefined) {
-              if (prevInput.current != null) {
-                const diffs = arrayDiffEq(prevInput.current, childInputs, { equals: (a, b) => a.key === b.key });
-                const newActions = diffs.map(
-                  mapDomAction((newInput) => {
-                    const [events, { getNode }] = component();
-                    const node = getNode(omit(newInput, ["key"]) as Input);
-                    return [
-                      events,
-                      node != null && typeof node === "object" && "props" in node
-                        ? { ...node, key: newInput.key }
-                        : node,
-                    ] as const;
-                  })
-                );
-                const newEventActions = newActions.map(
-                  mapDomAction(([events, _reactNode]) => events)
-                ) as SafeDOMAction<Events>[];
-                const newNodeActions = newActions.map(
-                  mapDomAction(([_events, reactNode]) => reactNode)
-                ) as SafeDOMAction<ReactNode>[];
-                const newEvents = newEventActions.reduce((acc, cur) => applyAction(acc, cur), asyncEvents.current);
-                const newNodes = newNodeActions.reduce((acc, cur) => applyAction(acc, cur), asyncChildren);
+              const prevChildrenByKey = Object.fromEntries(
+                asyncChildren
+                  .map((node) =>
+                    node != null && typeof node === "object" && "props" in node
+                      ? ([node.key, node] as [string, ReactNode])
+                      : null
+                  )
+                  .filter((entry): entry is [string, ReactNode] => entry != null)
+              );
+              const childrenAndEvents = (childInputs ?? []).map((input) => {
+                const key = (input as { key: string }).key;
+                if (key in prevChildrenByKey && key in prevEventsByKey.current) {
+                  return [key, prevEventsByKey.current[key] as Events, prevChildrenByKey[key]] as const;
+                }
+                const [events, { getNode }] = component();
+                const node = getNode(omit(input as Input, ["key"]) as unknown as Input);
+                return [
+                  key,
+                  events,
+                  node != null && typeof node === "object" && "props" in node ? { ...node, key } : node,
+                ] as const;
+              });
+              const streamChildren = childrenAndEvents.map(([, , child]) => child);
+              const events = childrenAndEvents.map(([, events]) => events);
 
-                pushEvents.next(newEvents as NonEmptyArray<Events>);
-                asyncEvents.current = newEvents;
-                setAsyncChildren(newNodes);
-              } else {
-                const childrenAndEvents = (childInputs ?? []).map((input) => {
-                  const [events, { getNode }] = component();
-                  const node = getNode(omit(input, ["key"]) as Input);
-                  return [
-                    events,
-                    node != null && typeof node === "object" && "props" in node ? { ...node, key: input.key } : node,
-                  ] as const;
-                });
-                const streamChildren = childrenAndEvents.map(([, child]) => child);
-                const events = childrenAndEvents.map(([events]) => events);
-
-                pushEvents.next(events as NonEmptyArray<Events>);
-                asyncEvents.current = events;
-                setAsyncChildren(streamChildren);
-              }
-              prevInput.current = childInputs;
+              pushEvents.next(events as NonEmptyArray<Events>);
+              prevEventsByKey.current = Object.fromEntries(childrenAndEvents.map(([key, events]) => [key, events]));
+              setAsyncChildren(streamChildren);
             }
           }, [childInputs]);
           useEffect(() => {
@@ -89,14 +69,14 @@ export const asyncMapNonEmpty = <Input, Events>(
   ];
 };
 
-export const asyncMap: <Input, Events>(
+export const asyncMap: <Input extends Record<string, unknown>, Events extends Record<string, unknown>>(
   component: () => RxComponent<Input, Events>
-) => RxComponent<{ map: Observable<(Input & { key: string })[]> }, { map: Observable<Events[]> }> =
+) => RxComponent<{ map: Observable<ShallowAnd<Input, { key: string }>[]> }, { map: Observable<Events[]> }> =
   asyncMapNonEmpty as any;
 
-export const asyncSingle = <Input, Events>(
+export const asyncSingle = <Input extends Record<string, unknown>, Events extends Record<string, unknown>>(
   childComponent: RxComponent<Input, Events>
-): RxComponent<{ asyn: Observable<Input & { key: string }> }, { asyn: Observable<Events> }> => {
+): RxComponent<{ asyn: Observable<ShallowAnd<Input, { key: string }>> }, { asyn: Observable<Events> }> => {
   const [asyncEvents, { getNode: asyncGetNode }] = asyncMap(() => childComponent);
 
   return [

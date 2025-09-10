@@ -12,21 +12,15 @@ type NewFormComponent<A> = RxComponent<{ errors: string[] }, { value: () => Eith
 
 const errLabel = () => ic("div", { style: { color: "red" } })(["children"]);
 
-const [events, { getNode, inputKeys }] = ks(
-  ["name", formComponent(z.string(), ms(c("input", ["ref"], { type: "text", defaultValue: "ant jofis" }), errLabel()))],
-  [
-    "newPassword",
-    formComponent(
-      z.string().min(6).max(10),
-      ms(c("input", ["ref"], { type: "password", defaultValue: "admin" }), errLabel())
-    ),
-  ],
-  [
-    "age",
-    formComponent(z.coerce.number(), ms(c("input", ["ref"], { type: "number", defaultValue: "64" }), errLabel())),
-  ],
-  ["submit", c("button", ["onClick"], { children: "submit" })]
-);
+const [events, { getNode, inputKeys }] = ks({
+  name: formComponent(z.string(), ms(c("input", ["ref"], { type: "text", defaultValue: "ant jofis" }), errLabel())),
+  newPassword: formComponent(
+    z.string().min(6).max(10),
+    ms(c("input", ["ref"], { type: "password", defaultValue: "admin" }), errLabel())
+  ),
+  age: formComponent(z.coerce.number(), ms(c("input", ["ref"], { type: "number", defaultValue: "64" }), errLabel())),
+  submit: c("button", ["onClick"], { children: "submit" }),
+});
 
 const inputStream = events.submit.onClick.pipe(
   r.map(() => {
