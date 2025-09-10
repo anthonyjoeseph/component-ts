@@ -11,17 +11,14 @@ export const clicker = (): RxComponent<{}, { numClicks: r.Observable<number> }> 
     children: 0,
   });
 
-  const numClicks = events.onClick.pipe(
-    r.startWith(0),
-    r.scan((acc) => acc + 1, -1)
-  );
+  const numClicks = events.onClick.pipe(r.scan((acc) => acc + 1, 0));
 
   const node = getNode({ children: numClicks });
 
   return [{ numClicks }, { getNode: () => node, inputKeys: [] }];
 };
 
-const view = c(
+const [events, { getNode }] = c(
   "div",
   ks({
     clickers: asyncMap(clicker),
@@ -29,8 +26,6 @@ const view = c(
     readButton: c("button", [], ["onClick"], { children: "read text" }),
   })
 );
-
-const [events, { getNode }] = view;
 
 const onSubmit = r
   .merge(events.readButton.onClick, events.text.onKeyPress.pipe(r.filter((k) => k.key === Key.Enter)))

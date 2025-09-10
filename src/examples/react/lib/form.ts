@@ -1,37 +1,31 @@
 import { RxComponent } from "./component";
 import { type Observable } from "rxjs";
 import * as r from "rxjs";
-import { ReactNode } from "react";
 import { Either } from "fp-ts/Either";
 import * as E from "fp-ts/Either";
 import * as R from "fp-ts/Record";
 import { identity, pipe } from "fp-ts/function";
-import { z } from "zod";
 import { ShallowAnd } from "./util";
 
-export type FormComponent<E, A> = (input: { error: Observable<E> }) => [ReactNode, { ref: () => Either<E, A> }];
-R.map;
+export type FormComponent<A> = RxComponent<{ errors: string[] }, { getValue: () => Either<string[], A> }>;
 
-export const formComponent = <
+export const validateInput = <
+  E,
   A,
   Input extends Record<string, unknown>,
   Events extends { ref: () => { value?: unknown } },
 >(
-  schema: z.ZodType<A>,
+  validate: (input: unknown) => Either<E, A>,
   [events, getNode]: RxComponent<Input, Events>
-): RxComponent<Input, ShallowAnd<Events, { getValue: () => Either<string[], A> }>> => {
+): RxComponent<Input, ShallowAnd<Events, { getValue: () => Either<E, A> }>> => {
   return [
     {
       ...events,
       getValue: () => {
         const ref = events.ref();
-        const result = schema.safeParse(ref.value);
-        if (result.success) {
-          return E.right(result.data);
-        }
-        return E.left(result.error.issues.map((i) => i.message));
+        return validate(ref.value);
       },
-    } as ShallowAnd<Events, { getValue: () => Either<string[], A> }>,
+    } as ShallowAnd<Events, { getValue: () => Either<E, A> }>,
     getNode,
   ];
 };
@@ -93,7 +87,7 @@ export const partitionObservable = <E, A>(
 };
 
 export const splitObservable = <A extends Record<string | symbol, unknown>>(
-  observable: Observable<A>,
+  observable: Observable<A | undefined>,
   keys: (keyof A)[]
 ): {
   [K in keyof A]-?: Observable<NonNullable<A[K]>>;
@@ -104,10 +98,42 @@ export const splitObservable = <A extends Record<string | symbol, unknown>>(
         [
           key,
           observable.pipe(
-            r.filter((a) => key in a),
+            r.filter((a): a is A => a !== undefined && key in a),
             r.map((a) => a[key])
           ),
         ] as const
     )
   ) as { [K in keyof A]-?: Observable<NonNullable<A[K]>> };
+};
+
+export const formProgram = <FormEvents extends Record<string, { getValue: () => Either<unknown, unknown> }>>(
+  formEvents: Observable<FormEvents>,
+  errorNames: (keyof FormEvents)[]
+): {
+  errors: {
+    [K in keyof FormEvents]: {
+      errors: Observable<ReturnType<FormEvents[K]["getValue"]> extends Either<infer Error, any> ? Error : never>;
+    };
+  };
+  formValues: Observable<{
+    [K in keyof FormEvents]: ReturnType<FormEvents[K]["getValue"]> extends Either<any, infer Value> ? Value : never;
+  }>;
+} => {
+  const inputStream = formEvents.pipe(r.map((a) => validateNestedEither(getFormValues(a))));
+  const { left, right } = partitionObservable(inputStream);
+
+  const errors = pipe(
+    splitObservable(left, errorNames as any[]),
+    R.map((errors) => ({ errors }))
+  );
+  return {
+    errors: errors as {
+      [K in keyof FormEvents]: {
+        errors: Observable<ReturnType<FormEvents[K]["getValue"]> extends Either<infer Error, any> ? Error : never>;
+      };
+    },
+    formValues: right as Observable<{
+      [K in keyof FormEvents]: ReturnType<FormEvents[K]["getValue"]> extends Either<any, infer Value> ? Value : never;
+    }>,
+  };
 };

@@ -30,7 +30,7 @@ export type GetOutputs<
       : never;
 };
 
-export const component: {
+export type ComponentFn = {
   <
     Tag extends keyof JSX.IntrinsicElements,
     InputKeys extends Array<keyof JSX.IntrinsicElements[Tag]>,
@@ -121,7 +121,11 @@ export const component: {
   ): RxComponent<{ [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> }, {}>;
 
   <Tag extends keyof JSX.IntrinsicElements>(tag: Tag, staticInputs?: JSX.IntrinsicElements[Tag]): RxComponent<{}, {}>;
-} = (
+};
+
+const f = <form action="eee"></form>;
+
+export const component: ComponentFn = (
   tag: string,
   secondArg?: string[] | Record<string, unknown> | [Record<string, unknown>, InputFn<unknown>],
   thirdArg?: string[] | Record<string, unknown> | [Record<string, unknown>, InputFn<unknown>],

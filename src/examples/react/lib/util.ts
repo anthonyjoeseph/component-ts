@@ -1,3 +1,5 @@
+export type HasKeys<A> = keyof A extends never ? false : true;
+
 export type NonEmptyArray<A> = [A, ...A[]];
 
 export type ShallowAnd<A, B> = {

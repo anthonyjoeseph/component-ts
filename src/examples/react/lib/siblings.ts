@@ -1,8 +1,6 @@
 import { createElement, Fragment, ReactNode } from "react";
 import { component, ComponentEvents, ComponentInput, InputFn, RxComponent } from "./component";
-import { ShallowUnionToIntersection } from "./util";
-
-type HasKeys<A> = keyof A extends never ? false : true;
+import { HasKeys, ShallowUnionToIntersection } from "./util";
 
 /**
  * As per https://stackoverflow.com/a/30919039 we can rely on Object.keys for
