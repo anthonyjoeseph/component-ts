@@ -68,17 +68,6 @@ export const instantaneous = <A>(obs: r.Observable<A>): Instantaneous<A> => {
   );
 };
 
-const mergeMap = <A, B>(fn: (a: A) => Instantaneous<B>): ((obs: Instantaneous<A>) => Instantaneous<B>) => {
-  return (obs) => {
-    return null;
-  };
-};
-
-const merge2 = <A>(obss: Instantaneous<A>[]): Instantaneous<A> => {
-  const f = r.of(...obss);
-  return f.pipe(mergeMap((a) => a));
-};
-
 export const merge = <A>(obss: Instantaneous<A>[]): Instantaneous<A> => {
   const extraCounts: Record<symbol, number> = {};
   const handleInit = (emit: InstEmit<A>) => {

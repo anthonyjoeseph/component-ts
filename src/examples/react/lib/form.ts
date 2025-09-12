@@ -3,6 +3,8 @@ import { type Observable } from "rxjs";
 import * as r from "rxjs";
 import { Either } from "fp-ts/Either";
 import * as E from "fp-ts/Either";
+import { These } from "fp-ts/These";
+import * as T from "fp-ts/These";
 import * as R from "fp-ts/Record";
 import { identity, pipe } from "fp-ts/function";
 import { ShallowAnd } from "./util";
@@ -81,6 +83,28 @@ export const partitionObservable = <E, A>(
     ),
     right: observable.pipe(
       r.filter((ei) => ei._tag === "Right"),
+      r.map((ei) => ei.right)
+    ),
+  };
+};
+
+export const partitionObservableThese = <E, A>(
+  observable: Observable<These<E, A>>
+): {
+  left: Observable<E>;
+  right: Observable<A>;
+} => {
+  return {
+    left: observable.pipe(
+      r.filter((ei) => {
+        return ei._tag === "Left" || ei._tag === "Both";
+      }),
+      r.map((ei) => {
+        return ei.left;
+      })
+    ),
+    right: observable.pipe(
+      r.filter((ei) => ei._tag === "Right" || ei._tag === "Both"),
       r.map((ei) => ei.right)
     ),
   };

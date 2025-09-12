@@ -3,7 +3,6 @@ import { keyedSiblings as ks, mergeSiblings as ms } from "../lib/siblings";
 import * as r from "rxjs";
 import * as z from "zod";
 import { validateInput, formProgram } from "../lib/form";
-import { pick } from "lodash";
 import { Observable } from "rxjs";
 import { Either } from "fp-ts/Either";
 import * as E from "fp-ts/Either";

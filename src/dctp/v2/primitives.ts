@@ -1,6 +1,6 @@
 import * as r from "rxjs";
 
-r.mergeAll;
+r.filter;
 
 type O<A> = r.Observable<A>;
 
@@ -10,31 +10,11 @@ declare const map: <A, B>(a: O<A>, fn: (a: A) => B) => O<B>;
 
 declare const defer: <A>(fn: () => O<A>) => O<A>;
 
-declare const merge2: <A>(a: O<A>, b: O<A>) => O<A>;
+declare const merge2: <A, B>(a: O<A>, b: O<B>) => O<A | B>;
 
 declare const accum: <A>(initial: A, a: O<(a: A) => A>) => O<A>;
 
-const pairwise = <A>(initial: A, a: O<A>): O<[A, A]> => {
-  return accum(
-    [initial, initial],
-    a.pipe(
-      r.map((newOne): ((a: [A, A]) => [A, A]) => {
-        return ([, old]) => [old, newOne];
-      })
-    )
-  );
-};
-
-const scan = <A, B>(initial: B, fn: (cur: A, acc: B) => B, ob: O<A>): O<B> => {
-  return accum(
-    initial,
-    ob.pipe(
-      r.map((a): ((b: B) => B) => {
-        return (b: B): B => fn(a, b);
-      })
-    )
-  );
-};
+declare const switchMap: <A, B>(a: O<A>, fn: (a: A) => O<B>) => O<B>;
 
 const mergeAll3 = <A>(a: O<O<A>>): O<A> => {
   return new r.Observable(({ next }) => {

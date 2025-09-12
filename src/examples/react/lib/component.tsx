@@ -15,6 +15,40 @@ export type ComponentEvents<C extends RxComponent<any, any>> = C[0];
 
 export type InputFn<Input> = { inputKeys: (keyof Input)[]; getNode: (input: Input) => ReactNode };
 
+export const contramapInputs = <
+  OldInput extends Record<string, unknown>,
+  Events extends Record<string, unknown>,
+  NewInputKeys extends string[],
+  NewInput extends Record<NewInputKeys[number], unknown>,
+>(
+  component: RxComponent<OldInput, Events>,
+  newInputKeys: NewInputKeys,
+  fn: (inputs: NewInput, oldInputKeys: (keyof OldInput)[]) => OldInput
+): RxComponent<NewInput, Events> => {
+  const [events, { getNode, inputKeys: oldInputKeys }] = component;
+  return [
+    events,
+    {
+      getNode: (newInput) => {
+        return getNode(fn(newInput, oldInputKeys));
+      },
+      inputKeys: newInputKeys,
+    },
+  ];
+};
+
+export const mapEvents = <
+  Input extends Record<string, unknown>,
+  OldEvents extends Record<string, unknown>,
+  NewEvents extends Record<string, unknown>,
+>(
+  component: RxComponent<Input, OldEvents>,
+  fn: (events: OldEvents, inputKeys: (keyof Input)[]) => NewEvents
+): RxComponent<Input, NewEvents> => {
+  const [events, inputFn] = component;
+  return [fn(events, inputFn.inputKeys), inputFn];
+};
+
 export type GetInputs<Tag extends keyof JSX.IntrinsicElements, Keys extends Array<keyof JSX.IntrinsicElements[Tag]>> = {
   [K in Keys[number]]: Observable<JSX.IntrinsicElements[Tag][K]>;
 };
