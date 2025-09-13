@@ -1,4 +1,5 @@
 import * as r from "rxjs";
+import ArrayKeyedMap from "array-keyed-map";
 
 export type Sync<A> = {
   type: "sync";
@@ -36,14 +37,12 @@ export type InstInit = {
   type: "init";
   initType:
     | {
-        type: "normie";
-      }
-    | {
-        type: "parent";
+        type: "plain";
       }
     | {
         type: "child";
-        parent: symbol;
+        switchMapParents: symbol[];
+        removePrevious?: symbol;
       };
   provenance: symbol;
 };
@@ -52,14 +51,14 @@ export type InstVal<A> = {
   type: "value";
   value: A;
   provenance: symbol;
-  switchMapParent: symbol | null;
+  switchMapParents: symbol[];
   selfMergeCount: number;
 };
 
 export type InstFiltered = {
   type: "filtered";
   provenance: symbol;
-  switchMapParent: symbol | null;
+  switchMapParents: symbol[];
   selfMergeCount: number;
 };
 
@@ -73,12 +72,12 @@ export const instantaneous = <A>(obs: r.Observable<A>): Instantaneous<A> => {
       (value): InstVal<A> => ({
         type: "value",
         provenance: provenance,
-        switchMapParent: null,
+        switchMapParents: [],
         value,
         selfMergeCount: 1,
       })
     ),
-    r.startWith({ type: "init", initType: { type: "normie" }, provenance } satisfies InstInit)
+    r.startWith({ type: "init", initType: { type: "plain" }, provenance } satisfies InstInit)
   );
 };
 
@@ -87,9 +86,16 @@ export const fromInstantaneous: <A>(obs: Instantaneous<A>) => r.Observable<A> = 
   r.map((emit) => emit.value)
 );
 
-export const of = <A>(...as: A[]): Instantaneous<A> => instantaneous(r.of(...as));
-
+// TODO: Optimize this to ignore obs that are already hot
+// b/c the current impl is very inefficient re: mergeMap
+// i.e. there are 2 ways to create an instantaneous:
+// with a subject `createHot()`, or with a callback fn `cold(...)`
+// these have yet to be written - for now, it's just the `instantaneous` fn
+// (which should eventually be deleted in favor of these other options)
 export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => inst.pipe(r.share());
+
+// this should be in the util package, written in terms of "cold(...)" - see above
+export const of = <A>(...as: A[]): Instantaneous<A> => instantaneous(r.of(...as));
 
 export const empty: Instantaneous<never> = r.EMPTY;
 
@@ -107,9 +113,39 @@ export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) =>
 };
 
 /**
- * we know that at subscribe-time we will get exactly one Init from each array member
- * and nested merges will still emit one init for each Instantaneous
- * (since switchMap filters the init out from its children)
+ * TODO:
+ * - current impl doesn't really work at all
+ * - "switchMapParents" should be { prov: symbol; count: number }[]
+ * - consider the "shared parents" case
+ * - when 2 & 3 emit their `init`, `batchSimul` needs to wait for their shared `parent init`
+ * - likewise, the "shared parents, unrelated" case
+ * - when 2 & 3 emit, `batchSimul` can still wait for their `parent init`
+ * - but receive only a single `child init`
+ */
+
+/**
+ * shared parents
+ * shared = switchMap(a, () => b)
+ * merge(a, shared, shared)
+ *
+ * shared nested parents
+ * nested = switchMap(a, switchMap(b, () => c));
+ * merge(a, nested, nested)
+ *
+ * shared parents, unrelated emissions
+ * merge(a, switchMap(a, () => b), switchMap(a, () => c))
+ *
+ * multiple relevant parents
+ * shared = switchMap(merge(a, b), () => c)
+ * merge(a, b, shared, shared)
+ *
+ * parents siblings includes self
+ * merge(a, switchMap(b, () => a))
+ */
+
+/**
+ * we know that at subscribe-time we will get exactly one plain Init from each array member
+ * including nested merges, which will still emit one plain init for each member
  *
  * this means that we're able to view which members of obss share a provenance (siblings)
  * at subscribe-time, before anything actually emits
@@ -121,55 +157,45 @@ export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) =>
  * the biggest superset of siblings
  */
 export const merge = <A>(obss: Instantaneous<A>[]): Instantaneous<A> => {
-  const numWithProvenance: Record<symbol, number> = {};
-  const parentsByProvenance: Record<symbol, { count: number; numChildrenWithProvenance: Record<symbol, number> }> = {};
+  const numWithProvenance = new ArrayKeyedMap<symbol[], number>();
+
+  const handleInit = (emit: InstEmit<A>) => {
+    if (emit.type === "init") {
+      const prov = emit.provenance;
+      switch (emit.initType.type) {
+        case "plain":
+          numWithProvenance.get([prov]);
+          const num = numWithProvenance.get([prov]);
+          numWithProvenance.set([prov], (num ?? 0) + 1);
+          break;
+        case "child":
+          const key = [...emit.initType.switchMapParents, prov];
+          const numSiblings = numWithProvenance.get(key);
+          numWithProvenance.set(key, (numSiblings ?? 0) + 1);
+          if (emit.initType.removePrevious !== undefined) {
+            const prevKey = [...emit.initType.switchMapParents, emit.initType.removePrevious];
+            const numSiblings = numWithProvenance.get(prevKey);
+            numWithProvenance.set(prevKey, (numSiblings ?? 0) + 1);
+          }
+          break;
+      }
+    }
+  };
   return r.merge(...obss).pipe(
     batchSync(),
     r.mergeMap((batch): Instantaneous<A> => {
       if (batch.type === "sync") {
-        batch.value.forEach((emit: InstEmit<A>) => {
-          if (emit.type === "init") {
-            const prov = emit.provenance;
-            switch (emit.initType.type) {
-              case "normie":
-                const num = numWithProvenance[prov];
-                numWithProvenance[prov] = (num ?? 0) + 1;
-                break;
-              case "parent":
-                if (parentsByProvenance[prov] === undefined) {
-                  parentsByProvenance[prov] = {
-                    count: 1,
-                    numChildrenWithProvenance: {},
-                  };
-                } else {
-                  parentsByProvenance[prov].count++;
-                }
-                break;
-              case "child":
-                const numChildren =
-                  parentsByProvenance[emit.initType.parent]!.numChildrenWithProvenance[emit.provenance];
-                parentsByProvenance[emit.initType.parent]!.numChildrenWithProvenance[emit.provenance] =
-                  (numChildren ?? 0) + 1;
-                break;
-            }
-          }
-        });
+        batch.value.forEach(handleInit);
         return r.of(...batch.value);
       } else {
+        handleInit(batch.value);
         return r.of(batch.value);
       }
     }),
     r.map((emit) => {
       if (emit.type === "value" || emit.type === "filtered") {
-        const parentInfo = emit.switchMapParent != null ? parentsByProvenance[emit.switchMapParent] : undefined;
-        if (parentInfo !== undefined) {
-          const numSiblings = parentInfo.numChildrenWithProvenance[emit.provenance] ?? 1;
-          return {
-            ...emit,
-            selfMergeCount: numSiblings,
-          };
-        }
-        const numSiblings = numWithProvenance[emit.provenance] ?? 1;
+        const key = [...emit.switchMapParents, emit.provenance];
+        const numSiblings = numWithProvenance.get(key) ?? 1;
         return {
           ...emit,
           selfMergeCount: numSiblings,
@@ -180,18 +206,6 @@ export const merge = <A>(obss: Instantaneous<A>[]): Instantaneous<A> => {
     })
   );
 };
-
-/**
- * parents siblings includes self
- * merge(a, switchMap(b, () => a))
- *
- * multiple relevant parents
- * merge(a, b, switchMap(merge(a, b), () => c), switchMap(merge(a, b), () => c))
- *
- * shared parents, unrelated emissions
- * merge(a, switchMap(a, () => b), switchMap(a, () => c))
- *
- */
 
 /**
  * switchMap<A, B>(
@@ -215,9 +229,7 @@ export const merge = <A>(obss: Instantaneous<A>[]): Instantaneous<A> => {
  *
  * This is a problem, since `merge` relies on all init events to be synchronous
  *
- * So, switchMap acts as a boundary - all child inits are filtered out
- *
- * Instead, child values & filters are given a 'parent provenance', which represents the
+ * So, child values & filter emissions are given a 'parent provenance', which represents the
  * provenance of our parent observable (in fact, there might be many if the
  * parent is the result of a merge)
  *
@@ -230,10 +242,11 @@ export const merge = <A>(obss: Instantaneous<A>[]): Instantaneous<A> => {
 export const switchMap =
   <A, B>(childFn: (emission: A) => Instantaneous<B>) =>
   (parentObs: Instantaneous<A>): Instantaneous<B> => {
+    let previousChild: symbol | undefined;
     return parentObs.pipe(
       r.switchMap((parent) => {
         if (parent.type === "init") {
-          return r.of({ ...parent, initType: { type: "parent" } } satisfies InstInit);
+          return r.of({ ...parent, initType: { type: "plain" } } satisfies InstInit);
         } else if (parent.type === "filtered") {
           return r.of(parent satisfies InstFiltered);
         } else {
@@ -242,20 +255,29 @@ export const switchMap =
               type: "filtered",
               provenance: parent.provenance,
               selfMergeCount: parent.selfMergeCount,
-              switchMapParent: parent.switchMapParent,
+              switchMapParents: parent.switchMapParents,
             } satisfies InstFiltered),
             childFn(parent.value).pipe(
               r.map((child): InstEmit<B> => {
                 if (child.type === "init") {
+                  const previousProvenance = previousChild;
+                  previousChild = child.provenance;
                   return {
                     type: "init",
-                    initType: { type: "child", parent: parent.provenance },
+                    initType: {
+                      type: "child",
+                      switchMapParents: [
+                        ...(child.initType.type === "child" ? child.initType.switchMapParents : []),
+                        parent.provenance,
+                      ],
+                      removePrevious: previousProvenance,
+                    },
                     provenance: child.provenance,
                   } satisfies InstInit;
                 } else if (child.type === "filtered") {
                   return {
                     ...child,
-                    switchMapParent: parent.provenance,
+                    switchMapParents: [...child.switchMapParents, parent.provenance],
                   } satisfies InstFiltered;
                 }
                 return {
@@ -263,7 +285,7 @@ export const switchMap =
                   value: child.value,
                   provenance: child.provenance,
                   selfMergeCount: child.selfMergeCount,
-                  switchMapParent: parent.provenance,
+                  switchMapParents: [...child.switchMapParents, parent.provenance],
                 } satisfies InstVal<B>;
               })
             )
@@ -304,14 +326,14 @@ export const batchSimultaneous = <A>(obs: Instantaneous<A>): Instantaneous<A[]> 
         return r.of({
           type: "filtered",
           provenance,
-          switchMapParent: emit.switchMapParent,
+          switchMapParents: emit.switchMapParents,
           selfMergeCount: emit.selfMergeCount,
         } satisfies InstFiltered);
 
       return r.of({
         type: "value",
         value: currentBatch?.batch as A[],
-        switchMapParent: emit.switchMapParent,
+        switchMapParents: emit.switchMapParents,
         selfMergeCount: emit.selfMergeCount,
         provenance,
       } satisfies InstEmit<A[]>);

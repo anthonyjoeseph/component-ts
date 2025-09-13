@@ -1,5 +1,8 @@
-import { accumulate, instantaneous, Instantaneous, of, map, merge, switchMap, share, empty } from "./inst-v3";
+import { accumulate, Instantaneous, of, map, merge, switchMap, share, empty } from "./inst-v3";
 import { pipeWith } from "pipe-ts";
+
+// TODO
+// `observeOn` fn that approximates a scheduler using `buffer`
 
 export const scan =
   <A, B>(initial: B, fn: (acc: B, cur: A) => B) =>
