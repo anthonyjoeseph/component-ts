@@ -1,5 +1,6 @@
 import * as r from "rxjs";
 import { batchSync } from "./batch-sync";
+import ArrayKeyedMap from "array-keyed-map";
 
 export type InstInitPlain = {
   type: "init";
@@ -206,6 +207,26 @@ export const switchMap =
  *
  * parents siblings includes self
  * merge(a, switchMap(b, () => a))
+ *
+ */
+
+/**
+ * idea:
+ * an array-keyed map
+ *
+ * the key = ancestor provenances + provenance
+ * the value = { count: number; potentialCount: number; batch: array }
+ *
+ * when we receive an InstInitSwitchMapChild,
+ * - if it doesn't exist yet, set `potentialCount` to the # of siblings
+ * of its nearest ancestor, and set `count` to 1
+ * - and also, go thru and find all other cases with the same ancestor,
+ * and if they have a potentialCount, increment their `count`
+ *
+ * - if it does exist, [not sure where this is going]
+ *
+ *
+ *
  */
 
 export const batchSimultaneous = <A>(obs: Instantaneous<A>): Instantaneous<A[]> => {

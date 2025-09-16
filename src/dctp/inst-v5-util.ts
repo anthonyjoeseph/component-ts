@@ -1,8 +1,16 @@
-import { accumulate, Instantaneous, of, map, merge, switchMap, share, empty } from "./inst-v3";
+import { accumulate, Instantaneous, of, map, mergeAll, switchAll, share } from "./inst-v5";
 import { pipeWith } from "pipe-ts";
+import * as r from "rxjs";
 
-// TODO
-// `observeOn` fn that approximates a scheduler using `buffer`
+export const merge = <A>(...as: Instantaneous<A>[]): Instantaneous<A> => {
+  return pipeWith(of(...as), mergeAll());
+};
+
+export const switchMap =
+  <A, B>(fn: (a: A) => Instantaneous<B>) =>
+  (inst: Instantaneous<A>): Instantaneous<B> => {
+    return pipeWith(inst, map(fn), switchAll);
+  };
 
 export const scan =
   <A, B>(initial: B, fn: (acc: B, cur: A) => B) =>
@@ -28,22 +36,12 @@ export const pairwise =
     );
   };
 
-export const mergeMap =
-  <A, B>(fn: (a: A) => Instantaneous<B>) =>
-  (ob: Instantaneous<A>): Instantaneous<B> => {
-    return pipeWith(
-      ob,
-      scan(empty as Instantaneous<B>, (acc, cur) => merge([acc, share(fn(cur))])),
-      switchMap((a) => a)
-    );
-  };
-
 export const filter =
   <A, B extends A>(pred: (a: A) => a is B) =>
   (ob: Instantaneous<A>): Instantaneous<B> => {
     return pipeWith(
       ob,
-      switchMap((a) => (pred(a) ? of(a) : empty))
+      switchMap((a) => (pred(a) ? of(a) : r.EMPTY))
     );
   };
 
@@ -61,7 +59,7 @@ export const buffer =
   <A>(until: Instantaneous<unknown>) =>
   (ob: Instantaneous<A>): Instantaneous<A[]> => {
     return pipeWith(
-      merge<{ type: "emit"; value: A } | { type: "close" }>([
+      merge<{ type: "emit"; value: A } | { type: "close" }>(
         pipeWith(
           ob,
           map((value) => ({ type: "emit" as const, value }))
@@ -69,8 +67,8 @@ export const buffer =
         pipeWith(
           until,
           map(() => ({ type: "close" as const }))
-        ),
-      ]),
+        )
+      ),
       scan({ type: "closed" } as { type: "closed" } | { type: "open"; batch: A[] }, (acc, cur) =>
         cur.type === "close"
           ? { type: "closed" as const }
