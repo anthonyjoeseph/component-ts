@@ -1,8 +1,9 @@
 import * as r from "rxjs";
 import Observable = r.Observable;
 import Subject = r.Subject;
-import { batchSync } from "./batch-sync";
+import { Async, batchSync, Sync } from "./batch-sync";
 import ArrayKeyedMap from "array-keyed-map";
+import { range } from "lodash";
 
 export type InstInitPlain = {
   type: "init";
@@ -28,6 +29,12 @@ export type InstValPlain<A> = {
   init: InstInit;
 };
 
+export type InstValSync<A> = {
+  type: "value-sync";
+  values: A[];
+  init: InstInit;
+};
+
 export type InstValFiltered = {
   type: "value-filtered";
   init: InstInit;
@@ -40,7 +47,7 @@ export type InstClose = {
 
 export type InstInit = InstInitPlain | InstInitMerge | InstInitChild;
 
-export type InstVal<A> = InstValPlain<A> | InstValFiltered;
+export type InstVal<A> = InstValPlain<A> | InstValSync<A> | InstValFiltered;
 
 export type InstEmit<A> = InstInit | InstVal<A> | InstClose;
 
@@ -51,48 +58,59 @@ export const isInit = <A>(a: InstEmit<A>): a is InstInit => {
 };
 
 export const isVal = <A>(a: InstEmit<A>): a is InstVal<A> => {
-  return a.type === "value" || a.type === "value-filtered";
+  return a.type === "value" || a.type === "value-filtered" || a.type === "value-sync";
 };
 
 export const mapVal = <A, B>(a: InstVal<A>, fn: (i: InstValPlain<A>) => InstValPlain<B>): InstVal<B> => {
   switch (a.type) {
     case "value":
+      return fn(a);
+    case "value-sync":
       return {
         ...a,
-        value: undefined,
-      } as InstVal<never>;
+        values: a.values
+          .map((value) => ({ type: "value", init: a.init, value }) satisfies InstValPlain<A>)
+          .map(fn)
+          .map((plain) => plain.value),
+      };
     case "value-filtered":
       return a;
   }
 };
 
+export const initEq = <A>(a: InstInit, b: InstInit): boolean => {
+  return null;
+};
+
 export const cold = <T>(
   subscribe?: (this: Observable<T>, subscriber: r.Subscriber<T>) => r.TeardownLogic
 ): Instantaneous<T> => {
-  const provenance = Symbol();
-  return r.concat(
-    r.of({
-      type: "init",
-      provenance,
-    } satisfies InstInitPlain),
-    new Observable(subscribe).pipe(
-      r.map(
-        (value) =>
-          ({
-            type: "value",
-            init: {
-              type: "init",
-              provenance,
-            } satisfies InstInitPlain,
-            value,
-          }) satisfies InstValPlain<T>
-      )
-    ),
-    r.of({
-      type: "close",
-      init: { type: "init", provenance } satisfies InstInitPlain,
-    } satisfies InstClose)
-  );
+  return r.defer(() => {
+    const provenance = Symbol();
+    return r.concat(
+      r.of({
+        type: "init",
+        provenance,
+      } satisfies InstInitPlain),
+      new Observable(subscribe).pipe(
+        r.map(
+          (value) =>
+            ({
+              type: "value",
+              init: {
+                type: "init",
+                provenance,
+              } satisfies InstInitPlain,
+              value,
+            }) satisfies InstValPlain<T>
+        )
+      ),
+      r.of({
+        type: "close",
+        init: { type: "init", provenance } satisfies InstInitPlain,
+      } satisfies InstClose)
+    );
+  });
 };
 
 export class InstantSubject<T> extends Subject<InstEmit<T>> {
@@ -256,36 +274,96 @@ export const take =
 // mergeAll, switchAll, concatAll, exhaustAll
 // (each are called a `join` in haskell parlance)
 
-const wrapChildEmit = <A>(childEmit: InstEmit<A>, parentInit: InstInit): InstEmit<A> => {
-  if (isInit(childEmit)) {
-    return {
-      type: "init-child",
-      parent: parentInit as InstInit,
-      own: childEmit,
-    } satisfies InstInitChild;
-  }
-  if (isVal(childEmit)) {
-    if (childEmit.type === "value-filtered") {
+const wrapChildEmit = <A>(
+  childEmitGroup: Sync<InstEmit<A>> | Async<InstEmit<A>>,
+  parentInit: InstInit
+): InstEmit<A>[] => {
+  if (childEmitGroup.type === "sync") {
+    const allInits = childEmitGroup.value.filter(isInit);
+
+    const groupedWithVals = allInits.map((init) => {
+      const fromStream = childEmitGroup.value.filter(
+        (a): a is InstVal<A> | InstClose => (isVal(a) || a.type === "close") && initEq(init, a.init)
+      );
       return {
-        type: "value-filtered",
-        init: {
+        init,
+        filteredVals: fromStream.filter((a): a is InstValFiltered => isVal(a) && a.type === "value-filtered"),
+        vals: fromStream.filter((a): a is InstValPlain<A> | InstValSync<A> => isVal(a) && a.type !== "value-filtered"),
+        close: fromStream.find((a): a is InstClose => a.type === "close"),
+      };
+    });
+
+    return groupedWithVals.flatMap(({ init, filteredVals, vals, close }): InstEmit<A>[] => {
+      return [
+        {
+          type: "init-child",
+          parent: parentInit,
+          own: init,
+        } satisfies InstInitChild,
+        {
+          type: "value-sync",
+          init: {
+            type: "init-child",
+            parent: parentInit,
+            own: init,
+          },
+          values: vals.flatMap((v) => (v.type === "value-sync" ? v.values : [v.value])),
+        } satisfies InstValSync<A>,
+        ...filteredVals,
+        ...(close !== undefined ? [close] : []),
+      ];
+    });
+  } else {
+    const childEmit = childEmitGroup.value;
+    if (isInit(childEmit)) {
+      return [
+        {
           type: "init-child",
           parent: parentInit as InstInit,
-          own: childEmit.init,
+          own: childEmit,
         } satisfies InstInitChild,
-      } satisfies InstValFiltered;
+      ];
     }
-    return {
-      type: "value",
-      init: {
-        type: "init-child",
-        parent: parentInit as InstInit,
-        own: childEmit.init,
-      } satisfies InstInitChild,
-      value: childEmit.value,
-    } satisfies InstValPlain<A>;
+    if (isVal(childEmit)) {
+      if (childEmit.type === "value-filtered") {
+        return [
+          {
+            type: "value-filtered",
+            init: {
+              type: "init-child",
+              parent: parentInit as InstInit,
+              own: childEmit.init,
+            } satisfies InstInitChild,
+          } satisfies InstValFiltered,
+        ];
+      }
+      if (childEmit.type === "value-sync") {
+        return [
+          {
+            type: "value-sync",
+            init: {
+              type: "init-child",
+              parent: parentInit as InstInit,
+              own: childEmit.init,
+            } satisfies InstInitChild,
+            values: childEmit.values,
+          } satisfies InstValSync<A>,
+        ];
+      }
+      return [
+        {
+          type: "value",
+          init: {
+            type: "init-child",
+            parent: parentInit as InstInit,
+            own: childEmit.init,
+          } satisfies InstInitChild,
+          value: childEmit.value,
+        } satisfies InstValPlain<A>,
+      ];
+    }
+    return [childEmit];
   }
-  return childEmit;
 };
 
 export const mergeAll =
@@ -302,9 +380,25 @@ export const mergeAll =
           }
           if (isVal(input)) {
             if (input.type === "value-filtered") return r.of(input);
+            if (input.type === "value-sync") {
+              return r.merge(
+                ...range(0, input.values.length).map(() =>
+                  r.of({ type: "value-filtered", init: parentInit as InstInit } satisfies InstValFiltered)
+                ),
+                ...input.values.map((value) =>
+                  value.pipe(
+                    batchSync(),
+                    r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, parentInit as InstInit)))
+                  )
+                )
+              );
+            }
             return r.merge(
               r.of({ type: "value-filtered", init: input.init as InstInit } satisfies InstValFiltered),
-              input.value.pipe(r.map((emit2): InstEmit<A> => wrapChildEmit(emit2, parentInit as InstInit)))
+              input.value.pipe(
+                batchSync(),
+                r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, parentInit as InstInit)))
+              )
             );
           }
           return r.of(input);
@@ -340,10 +434,31 @@ export const switchAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantane
       }
       if (isVal(emit)) {
         if (emit.type === "value-filtered") return r.of(emit);
+        if (emit.type === "value-sync") {
+          if (emit.values.length === 0)
+            return r.of({ type: "value-filtered", init: previousInit as InstInit } satisfies InstValFiltered);
+
+          // we only need to subscribe to the most recent one,
+          // since this is switchMap
+          // but we do need to emit filtered values for all of them
+          const lastValue = emit.values[emit.values.length - 1]!;
+          return r.merge(
+            ...range(0, emit.values.length).map(() =>
+              r.of({ type: "value-filtered", init: previousInit as InstInit } satisfies InstValFiltered)
+            ),
+            lastValue.pipe(
+              batchSync(),
+              r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, previousInit as InstInit)))
+            )
+          );
+        }
         if (emit.type === "value") {
           return r.merge(
             r.of({ type: "value-filtered", init: previousInit as InstInit } satisfies InstValFiltered),
-            emit.value.pipe(r.map((emit2): InstEmit<A> => wrapChildEmit(emit2, previousInit as InstInit)))
+            emit.value.pipe(
+              batchSync(),
+              r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, previousInit as InstInit)))
+            )
           );
         }
       }
@@ -383,8 +498,24 @@ export const concatAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantane
       }
       if (isVal(emit)) {
         if (emit.type === "value-filtered") return r.EMPTY;
+        if (emit.type === "value-sync") {
+          return r.merge(
+            ...range(0, emit.values.length).map(() =>
+              r.of({ type: "value-filtered", init: currentInit as InstInit } satisfies InstValFiltered)
+            ),
+            ...emit.values.map((value) =>
+              value.pipe(
+                batchSync(),
+                r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, currentInit as InstInit)))
+              )
+            )
+          );
+        }
         if (emit.type === "value") {
-          return emit.value.pipe(r.map((emit2): InstEmit<A> => wrapChildEmit(emit2, currentInit as InstInit)));
+          return emit.value.pipe(
+            batchSync(),
+            r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, currentInit as InstInit)))
+          );
         }
       }
 
@@ -417,7 +548,7 @@ export const exhaustAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantan
   );
 
   let currentInit: InstInit | undefined;
-  const concatOutputs: Instantaneous<A> = sharedInput.pipe(
+  const exhaustOutputs: Instantaneous<A> = sharedInput.pipe(
     r.map((emit): Instantaneous<A> => {
       if (isInit(emit)) {
         currentInit = emit;
@@ -425,8 +556,24 @@ export const exhaustAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantan
       }
       if (isVal(emit)) {
         if (emit.type === "value-filtered") return r.EMPTY;
+        if (emit.type === "value-sync") {
+          return r.merge(
+            ...range(0, emit.values.length).map(() =>
+              r.of({ type: "value-filtered", init: currentInit as InstInit } satisfies InstValFiltered)
+            ),
+            ...emit.values.map((value) =>
+              value.pipe(
+                batchSync(),
+                r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, currentInit as InstInit)))
+              )
+            )
+          );
+        }
         if (emit.type === "value") {
-          return emit.value.pipe(r.map((emit2): InstEmit<A> => wrapChildEmit(emit2, currentInit as InstInit)));
+          return emit.value.pipe(
+            batchSync(),
+            r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, currentInit as InstInit)))
+          );
         }
       }
 
@@ -437,7 +584,7 @@ export const exhaustAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantan
     r.concatAll()
   );
 
-  return r.merge(filteredOutputs, concatOutputs);
+  return r.merge(filteredOutputs, exhaustOutputs);
 };
 
 export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]> => {
