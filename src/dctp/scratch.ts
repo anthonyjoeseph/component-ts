@@ -1,19 +1,20 @@
-import * as r from "rxjs";
-import * as i from "./inst-v2";
+import { merge } from "./v5/util";
+import { cold } from "./v5/constructors";
+import { fromInstantaneous, map, share } from "./v5/basic-primitives";
+import { batchSimultaneous } from "./v5/batch-simultaneous";
 
-import Observable = r.Observable;
-import Instantaneous = i.Instantaneous;
+const a = cold<number>((subscriber) => {
+  let count = 0;
+  setInterval(() => {
+    if (count > 2) {
+      subscriber.complete();
+    }
+    subscriber.next(count++);
+  }, 1000);
+}).pipe(share);
 
-/* const a = i.instantaneous(
-  r.of(null).pipe(
-    r.delay(0),
-    r.mergeMap(() => r.of(1, 2, 3)),
-    r.share()
-  )
-);
+const merged = merge(a, a.pipe(map((n) => n * 2)));
 
-const merged = i.merge([a, a.pipe(i.map((n) => n * 2))]);
+const batched = batchSimultaneous(merged);
 
-const batched = i.batchSimultaneous(merged);
-
-batched.pipe(i.fromInstantaneous).subscribe(console.log); */
+batched.pipe(fromInstantaneous).subscribe(console.log);

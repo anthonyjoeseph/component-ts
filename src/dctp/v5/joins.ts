@@ -1,278 +1,26 @@
 import * as r from "rxjs";
 import Observable = r.Observable;
 import Subject = r.Subject;
-import { Async, batchSync, Sync } from "./batch-sync";
-import ArrayKeyedMap from "array-keyed-map";
-import { range } from "lodash";
-
-export type InstInitPlain = {
-  type: "init";
-  provenance: symbol;
-  take?: number;
-};
-
-export type InstInitMerge = {
-  type: "init-merge";
-  take?: number;
-  children: InstInit[];
-};
-
-export type InstInitChild = {
-  type: "init-child";
-  parent: InstInit;
-  own: InstInit;
-};
-
-export type InstValPlain<A> = {
-  type: "value";
-  value: A;
-  init: InstInit;
-};
-
-export type InstValSync<A> = {
-  type: "value-sync";
-  values: A[];
-  init: InstInit;
-};
-
-export type InstValFiltered = {
-  type: "value-filtered";
-  init: InstInit;
-};
-
-export type InstClose = {
-  type: "close";
-  init: InstInit;
-};
-
-export type InstInit = InstInitPlain | InstInitMerge | InstInitChild;
-
-export type InstVal<A> = InstValPlain<A> | InstValSync<A> | InstValFiltered;
-
-export type InstEmit<A> = InstInit | InstVal<A> | InstClose;
-
-export type Instantaneous<A> = Observable<InstEmit<A>>;
-
-export const isInit = <A>(a: InstEmit<A>): a is InstInit => {
-  return a.type === "init" || a.type === "init-merge" || a.type === "init-child";
-};
-
-export const isVal = <A>(a: InstEmit<A>): a is InstVal<A> => {
-  return a.type === "value" || a.type === "value-filtered" || a.type === "value-sync";
-};
-
-export const mapVal = <A, B>(a: InstVal<A>, fn: (i: InstValPlain<A>) => InstValPlain<B>): InstVal<B> => {
-  switch (a.type) {
-    case "value":
-      return fn(a);
-    case "value-sync":
-      return {
-        ...a,
-        values: a.values
-          .map((value) => ({ type: "value", init: a.init, value }) satisfies InstValPlain<A>)
-          .map(fn)
-          .map((plain) => plain.value),
-      };
-    case "value-filtered":
-      return a;
-  }
-};
-
-export const initEq = <A>(a: InstInit, b: InstInit): boolean => {
-  return null;
-};
-
-export const cold = <T>(
-  subscribe?: (this: Observable<T>, subscriber: r.Subscriber<T>) => r.TeardownLogic
-): Instantaneous<T> => {
-  return r.defer(() => {
-    const provenance = Symbol();
-    return r.concat(
-      r.of({
-        type: "init",
-        provenance,
-      } satisfies InstInitPlain),
-      new Observable(subscribe).pipe(
-        r.map(
-          (value) =>
-            ({
-              type: "value",
-              init: {
-                type: "init",
-                provenance,
-              } satisfies InstInitPlain,
-              value,
-            }) satisfies InstValPlain<T>
-        )
-      ),
-      r.of({
-        type: "close",
-        init: { type: "init", provenance } satisfies InstInitPlain,
-      } satisfies InstClose)
-    );
-  });
-};
-
-export class InstantSubject<T> extends Subject<InstEmit<T>> {
-  protected _provenance: symbol;
-
-  constructor() {
-    // NOTE: This must be here to obscure Observable's constructor.
-    super();
-    this._provenance = Symbol();
-  }
-
-  /** @internal */
-  protected _subscribe(subscriber: r.Subscriber<InstEmit<T>>): r.Subscription {
-    const subscription = super["_subscribe" as string as "subscribe"](subscriber);
-    !subscription.closed &&
-      subscriber.next({
-        type: "init",
-        provenance: this._provenance,
-      } satisfies InstInitPlain);
-    return subscription;
-  }
-
-  instNext(value: T): void {
-    super.next({
-      type: "value",
-      init: {
-        type: "init",
-        provenance: this._provenance,
-      } satisfies InstInitPlain,
-      value,
-    } satisfies InstValPlain<T>);
-  }
-
-  instClose(): void {
-    super.next({
-      type: "close",
-      init: {
-        type: "init",
-        provenance: this._provenance,
-      } satisfies InstInitPlain,
-    } satisfies InstClose);
-    super.complete();
-  }
-
-  next(val: InstEmit<T>): void {
-    throw new Error("ERROR: `next` not implemented, use `instNext`");
-  }
-
-  close(): void {
-    throw new Error("ERROR: `close` not implemented, use `instClose`");
-  }
-}
-
-export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> => {
-  const provenance = Symbol();
-  return r.of(
-    {
-      type: "init",
-      provenance,
-    } satisfies InstInitPlain,
-    ...a.map(
-      (value) =>
-        ({
-          type: "value",
-          init: {
-            type: "init",
-            provenance,
-          } satisfies InstInitPlain,
-          value,
-        }) satisfies InstValPlain<As[number]>
-    ),
-    {
-      type: "close",
-      init: {
-        type: "init",
-        provenance,
-      } satisfies InstInitPlain,
-    } satisfies InstClose
-  );
-};
-
-export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {
-  if ("instNext" in inst) {
-    return inst;
-  }
-  const subj = new InstantSubject<A>();
-  let isSubscribed = false;
-  return r.defer(() => {
-    if (!isSubscribed) {
-      inst.subscribe(subj);
-      isSubscribed = true;
-    }
-    return subj;
-  });
-};
-
-export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) => Instantaneous<A>) => {
-  let value = initial;
-  return map((fn) => {
-    const newValue = fn(value);
-    value = newValue;
-    return newValue;
-  });
-};
-
-export const map =
-  <A, B>(fn: (a: A) => B) =>
-  (inst: Instantaneous<A>): Instantaneous<B> => {
-    return inst.pipe(
-      r.map((a) =>
-        isVal(a)
-          ? mapVal(
-              a,
-              (rootVal): InstValPlain<B> => ({
-                ...rootVal,
-                value: fn(rootVal.value),
-              })
-            )
-          : a
-      )
-    );
-  };
-
-export const take =
-  (takeNum: number) =>
-  <A>(inst: Instantaneous<A>): Instantaneous<A> => {
-    let init: InstInit | undefined;
-    return r.concat(
-      inst.pipe(
-        r.map((a) => {
-          if (isInit(a)) {
-            init = a;
-            const addTake = (init: InstInit): InstInit => {
-              switch (init.type) {
-                case "init":
-                  return { ...init, take: init.take === undefined ? takeNum : Math.min(init.take, takeNum) };
-                case "init-child":
-                  return {
-                    ...init,
-                    own: addTake(init.own),
-                  } satisfies InstInitChild;
-                case "init-merge":
-                  return {
-                    ...init,
-                    take: init.take === undefined ? takeNum : Math.min(init.take, takeNum),
-                    children: init.children,
-                  } satisfies InstInitMerge;
-              }
-            };
-            return addTake(a);
-          }
-          return a;
-        }),
-        r.take(takeNum)
-      ),
-      r.of({ type: "close", init: init as InstInit } satisfies InstClose)
-    );
-  };
-
-// JOINS
-// mergeAll, switchAll, concatAll, exhaustAll
-// (each are called a `join` in haskell parlance)
+import {
+  initEq,
+  Instantaneous,
+  InstClose,
+  InstEmit,
+  InstInit,
+  InstInitChild,
+  InstInitMerge,
+  InstInitPlain,
+  InstVal,
+  InstValFiltered,
+  InstValPlain,
+  InstValSync,
+  isInit,
+  isVal,
+  mapVal,
+} from "./types";
+import { Async, batchSync, Sync } from "../batch-sync";
+import range from "lodash/range";
+import { share } from "./basic-primitives";
 
 const wrapChildEmit = <A>(
   childEmitGroup: Sync<InstEmit<A>> | Async<InstEmit<A>>,
@@ -585,9 +333,4 @@ export const exhaustAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantan
   );
 
   return r.merge(filteredOutputs, exhaustOutputs);
-};
-
-export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]> => {
-  const memory = new ArrayKeyedMap<symbol[], number>();
-  return null;
 };

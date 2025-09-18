@@ -1,6 +1,8 @@
-import { accumulate, Instantaneous, of, map, mergeAll, switchAll, share } from "./inst-v5";
 import { pipeWith } from "pipe-ts";
 import * as r from "rxjs";
+import { mergeAll, switchAll } from "./joins";
+import { accumulate, map, of } from "./basic-primitives";
+import { Instantaneous } from "./types";
 
 export const merge = <A>(...as: Instantaneous<A>[]): Instantaneous<A> => {
   return pipeWith(of(...as), mergeAll());

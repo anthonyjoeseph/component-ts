@@ -1,0 +1,132 @@
+import * as r from "rxjs";
+import Observable = r.Observable;
+import Subject = r.Subject;
+import {
+  Instantaneous,
+  InstClose,
+  InstEmit,
+  InstInit,
+  InstInitChild,
+  InstInitMerge,
+  InstInitPlain,
+  InstValPlain,
+  isInit,
+  isVal,
+  mapVal,
+} from "./types";
+import { Async, batchSync, Sync } from "../batch-sync";
+import ArrayKeyedMap from "array-keyed-map";
+import range from "lodash/range";
+import zip from "lodash/zip";
+import { InstantSubject } from "./constructors";
+
+export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> => {
+  const provenance = Symbol();
+  return r.of(
+    {
+      type: "init",
+      provenance,
+    } satisfies InstInitPlain,
+    ...a.map(
+      (value) =>
+        ({
+          type: "value",
+          init: {
+            type: "init",
+            provenance,
+          } satisfies InstInitPlain,
+          value,
+        }) satisfies InstValPlain<As[number]>
+    ),
+    {
+      type: "close",
+      init: {
+        type: "init",
+        provenance,
+      } satisfies InstInitPlain,
+    } satisfies InstClose
+  );
+};
+
+export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {
+  if ("instNext" in inst) {
+    return inst;
+  }
+  const subj = new InstantSubject<A>();
+  let isSubscribed = false;
+  return r.defer(() => {
+    if (!isSubscribed) {
+      inst.subscribe(subj);
+      isSubscribed = true;
+    }
+    return subj;
+  });
+};
+
+export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) => Instantaneous<A>) => {
+  let value = initial;
+  return map((fn) => {
+    const newValue = fn(value);
+    value = newValue;
+    return newValue;
+  });
+};
+
+export const map =
+  <A, B>(fn: (a: A) => B) =>
+  (inst: Instantaneous<A>): Instantaneous<B> => {
+    return inst.pipe(
+      r.map((a) =>
+        isVal(a)
+          ? mapVal(
+              a,
+              (rootVal): InstValPlain<B> => ({
+                ...rootVal,
+                value: fn(rootVal.value),
+              })
+            )
+          : a
+      )
+    );
+  };
+
+export const take =
+  (takeNum: number) =>
+  <A>(inst: Instantaneous<A>): Instantaneous<A> => {
+    let init: InstInit | undefined;
+    return r.concat(
+      inst.pipe(
+        r.map((a) => {
+          if (isInit(a)) {
+            init = a;
+            const addTake = (init: InstInit): InstInit => {
+              switch (init.type) {
+                case "init":
+                  return { ...init, take: init.take === undefined ? takeNum : Math.min(init.take, takeNum) };
+                case "init-child":
+                  return {
+                    ...init,
+                    own: addTake(init.own),
+                  } satisfies InstInitChild;
+                case "init-merge":
+                  return {
+                    ...init,
+                    take: init.take === undefined ? takeNum : Math.min(init.take, takeNum),
+                    children: init.children,
+                  } satisfies InstInitMerge;
+              }
+            };
+            return addTake(a);
+          }
+          return a;
+        }),
+        r.take(takeNum)
+      ),
+      r.of({ type: "close", init: init as InstInit } satisfies InstClose)
+    );
+  };
+
+export const fromInstantaneous: <A>(obs: Instantaneous<A>) => r.Observable<A> = r.pipe(
+  r.filter((emit) => emit.type === "value" || emit.type === "value-sync"),
+  r.mergeMap((emit) => (emit.type === "value" ? r.of(emit.value) : r.of(...emit.values)))
+);
