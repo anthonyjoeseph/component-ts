@@ -49,26 +49,38 @@ export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> =>
 };
 
 export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {
-  if ("instNext" in inst) {
+  if ("nextInternal" in inst) {
     return inst;
   }
-  const subj = new InstantSubject<A>();
+  const subj = new Subject<InstEmit<A>>();
   let isSubscribed = false;
+  let init: InstInit | undefined;
   return r.defer(() => {
+    let subscription: r.Subscription;
     if (!isSubscribed) {
-      inst.subscribe(subj);
+      subscription = inst.subscribe({
+        next: (emit) => {
+          if (!init) {
+            init = emit as InstInit;
+          }
+          subj.next(emit);
+        },
+        error: (err) => {
+          subj.error(err);
+        },
+        complete: () => {
+          subj.complete();
+        },
+      });
       isSubscribed = true;
     }
-    return subj;
-  });
-};
-
-export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) => Instantaneous<A>) => {
-  let value = initial;
-  return map((fn) => {
-    const newValue = fn(value);
-    value = newValue;
-    return newValue;
+    if (init !== undefined) {
+      return subj.pipe(
+        r.startWith(init),
+        r.finalize(() => subscription.unsubscribe())
+      );
+    }
+    return subj.pipe(r.finalize(() => subscription.unsubscribe()));
   });
 };
 
