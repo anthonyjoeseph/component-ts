@@ -1,18 +1,15 @@
 import * as r from "rxjs";
+import { v4 as uuid } from "uuid";
 import Observable = r.Observable;
 import Subject = r.Subject;
 import { Instantaneous, InstClose, InstEmit, InstInitPlain, InstValPlain } from "./types";
-import { Observer, Operator, Subscriber, Subscription, TeardownLogic } from "rxjs";
-import { AnonymousSubject } from "rxjs/internal/Subject";
-import { errorContext } from "rxjs/internal/util/errorContext";
-import { EMPTY_SUBSCRIPTION } from "rxjs/internal/Subscription";
-import { arrRemove } from "rxjs/internal/util/arrRemove";
+import { Observer, Subscription } from "rxjs";
 
 export const cold = <T>(
   subscribe?: (this: Observable<T>, subscriber: r.Subscriber<T>) => r.TeardownLogic
 ): Instantaneous<T> => {
   return r.defer(() => {
-    const provenance = Symbol();
+    const provenance = uuid() as unknown as symbol;
     return r.concat(
       r.of({
         type: "init",
@@ -39,57 +36,6 @@ export const cold = <T>(
   });
 };
 
-export class InstantSubject2<T> extends Subject<InstEmit<T>> {
-  protected _provenance: symbol;
-
-  constructor() {
-    // NOTE: This must be here to obscure Observable's constructor.
-    super();
-    this._provenance = Symbol();
-  }
-
-  /** @internal */
-  protected _subscribe(subscriber: r.Subscriber<InstEmit<T>>): r.Subscription {
-    const subscription = super["_subscribe" as string as "subscribe"](subscriber);
-    !subscription.closed &&
-      subscriber.next({
-        type: "init",
-        provenance: this._provenance,
-      } satisfies InstInitPlain);
-    return subscription;
-  }
-
-  instNext(value: T): void {
-    super.next({
-      type: "value",
-      init: {
-        type: "init",
-        provenance: this._provenance,
-      } satisfies InstInitPlain,
-      value,
-    } satisfies InstValPlain<T>);
-  }
-
-  next(val: InstEmit<T>): void {
-    super.next(val);
-  }
-
-  complete(): void {
-    super.next({
-      type: "close",
-      init: {
-        type: "init",
-        provenance: this._provenance,
-      } satisfies InstInitPlain,
-    } satisfies InstClose);
-    super.complete();
-  }
-
-  completeWithoutEmittingClose() {
-    super.complete();
-  }
-}
-
 export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.SubscriptionLike {
   protected _provenance: symbol;
   public closed: boolean;
@@ -99,7 +45,7 @@ export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.Subs
     super();
     this.internalSubject = new Subject<InstEmit<T>>();
     this.closed = false;
-    this._provenance = Symbol();
+    this._provenance = uuid() as unknown as symbol;
   }
 
   subscribe(observerOrNext?: Partial<Observer<InstEmit<T>>> | ((value: InstEmit<T>) => void) | null): Subscription;
@@ -130,12 +76,21 @@ export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.Subs
       typeof observerOrNext !== "function" && observerOrNext != null
         ? observerOrNext["complete"]
         : (completeArg ?? undefined);
-    return this.internalSubject
-      .pipe(
-        r.startWith({
+
+    return r
+      .concat(
+        r.of({
           type: "init",
           provenance: this._provenance,
-        } satisfies InstInitPlain)
+        } satisfies InstInitPlain),
+        this.internalSubject,
+        r.of({
+          type: "close",
+          init: {
+            type: "init",
+            provenance: this._provenance,
+          } satisfies InstInitPlain,
+        } satisfies InstClose)
       )
       .subscribe({
         next: (value) => {
@@ -148,20 +103,6 @@ export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.Subs
           complete?.();
         },
       });
-  }
-
-  subscribeInternal(observerOrNext: Partial<Observer<InstEmit<T>>>): r.Subscription {
-    return this.internalSubject.subscribe({
-      next: (value) => {
-        observerOrNext.next?.(value);
-      },
-      error: (value) => {
-        observerOrNext.error?.(value);
-      },
-      complete: () => {
-        observerOrNext.complete?.();
-      },
-    });
   }
 
   unsubscribe(): void {
@@ -185,13 +126,6 @@ export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.Subs
   }
 
   complete() {
-    this.internalSubject.next({
-      type: "close",
-      init: {
-        type: "init",
-        provenance: this._provenance,
-      } satisfies InstInitPlain,
-    } satisfies InstClose);
     this.closed = true;
     this.internalSubject.complete();
   }

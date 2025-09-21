@@ -1,4 +1,5 @@
 import * as r from "rxjs";
+import { v4 as uuid } from "uuid";
 import Observable = r.Observable;
 import Subject = r.Subject;
 import {
@@ -14,14 +15,9 @@ import {
   isVal,
   mapVal,
 } from "./types";
-import { Async, batchSync, Sync } from "../batch-sync";
-import ArrayKeyedMap from "array-keyed-map";
-import range from "lodash/range";
-import zip from "lodash/zip";
-import { InstantSubject } from "./constructors";
 
 export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> => {
-  const provenance = Symbol();
+  const provenance = uuid() as unknown as symbol;
   return r.of(
     {
       type: "init",
@@ -101,6 +97,15 @@ export const map =
       )
     );
   };
+
+export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) => Instantaneous<A>) => {
+  let value = initial;
+  return map((fn) => {
+    const newValue = fn(value);
+    value = newValue;
+    return newValue;
+  });
+};
 
 export const take =
   (takeNum: number) =>

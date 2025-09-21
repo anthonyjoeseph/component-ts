@@ -1,6 +1,4 @@
 import * as r from "rxjs";
-import Observable = r.Observable;
-import Subject = r.Subject;
 import {
   initEq,
   Instantaneous,
@@ -9,14 +7,12 @@ import {
   InstInit,
   InstInitChild,
   InstInitMerge,
-  InstInitPlain,
   InstVal,
   InstValFiltered,
   InstValPlain,
   InstValSync,
   isInit,
   isVal,
-  mapVal,
 } from "./types";
 import { Async, batchSync, Sync } from "../batch-sync";
 import range from "lodash/range";
@@ -117,11 +113,11 @@ const wrapChildEmit = <A>(
 export const mergeAll =
   <A>(concurrent?: number) =>
   (insts: Instantaneous<Instantaneous<A>>): Instantaneous<A> => {
+    let parentInit: InstInit;
     const retval = insts.pipe(
       batchSync(),
       r.map((nested) => {
         const handleVal = (input: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
-          let parentInit: InstInit | undefined;
           if (isInit(input)) {
             parentInit = input;
             return r.of(input);
@@ -155,10 +151,8 @@ export const mergeAll =
         if (nested.type === "sync") {
           const inits = nested.value.filter(isInit);
           const nonInits = nested.value.filter((x) => !isInit(x));
-          return r.merge(
-            r.of({ type: "init-merge", children: inits } satisfies InstInitMerge),
-            ...nonInits.map(handleVal)
-          );
+          parentInit = { type: "init-merge", children: inits } satisfies InstInitMerge;
+          return r.merge(r.of(parentInit), ...nonInits.map(handleVal));
         }
         return handleVal(nested.value);
       }),
