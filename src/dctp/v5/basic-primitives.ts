@@ -16,6 +16,8 @@ import {
   mapVal,
 } from "./types";
 
+export const EMPTY = r.defer(() => of());
+
 export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> => {
   const provenance = uuid() as unknown as symbol;
   return r.of(

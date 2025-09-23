@@ -10,6 +10,7 @@ export type InstInitPlain = {
 
 export type InstInitMerge = {
   type: "init-merge";
+  numSyncChildren: number;
   take?: number;
   children: InstInit[];
 };

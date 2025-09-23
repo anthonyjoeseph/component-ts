@@ -132,7 +132,9 @@ export const mergeAll =
                 ...input.values.map((value) =>
                   value.pipe(
                     batchSync(),
-                    r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, parentInit as InstInit)))
+                    r.mergeMap((emit2) => {
+                      return r.of(...wrapChildEmit(emit2, parentInit as InstInit));
+                    })
                   )
                 )
               );
@@ -141,7 +143,9 @@ export const mergeAll =
               r.of({ type: "value-filtered", init: input.init as InstInit } satisfies InstValFiltered),
               input.value.pipe(
                 batchSync(),
-                r.mergeMap((emit2) => r.of(...wrapChildEmit(emit2, parentInit as InstInit)))
+                r.mergeMap((emit2) => {
+                  return r.of(...wrapChildEmit(emit2, parentInit as InstInit));
+                })
               )
             );
           }
@@ -151,7 +155,11 @@ export const mergeAll =
         if (nested.type === "sync") {
           const inits = nested.value.filter(isInit);
           const nonInits = nested.value.filter((x) => !isInit(x));
-          parentInit = { type: "init-merge", children: inits } satisfies InstInitMerge;
+          parentInit = {
+            type: "init-merge",
+            children: inits,
+            numSyncChildren: nonInits.filter(isVal).length, // everything but the 'closes'
+          } satisfies InstInitMerge;
           return r.merge(r.of(parentInit), ...nonInits.map(handleVal));
         }
         return handleVal(nested.value);
@@ -161,9 +169,6 @@ export const mergeAll =
     return retval;
   };
 
-// TODO:
-// add batchSync() to this
-// so that `switchMap(of)(a) === a`
 export const switchAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantaneous<A> => {
   let previousInit: InstInit | undefined;
   return insts.pipe(
