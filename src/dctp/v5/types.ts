@@ -2,7 +2,7 @@ import * as r from "rxjs";
 import Observable = r.Observable;
 import zip from "lodash/zip";
 
-export type InstInitPlain<A> = {
+export type InstInitPlain = {
   type: "init";
   provenance: symbol;
   take?: number;
@@ -12,7 +12,7 @@ export type InstInitMerge<A> = {
   type: "init-merge";
   numSyncChildren: number;
   take?: number;
-  children: InstInit<A>[];
+  syncParents: InstInit<A>[];
 };
 
 export type InstInitChild<A> = {
@@ -33,7 +33,7 @@ export type InstClose<A> = {
   init: InstInit<A>;
 };
 
-export type InstInit<A> = InstInitPlain<A> | InstInitMerge<A> | InstInitChild<A>;
+export type InstInit<A> = InstInitPlain | InstInitMerge<A> | InstInitChild<A>;
 
 export type InstVal<A> = InstValPlain<A> | InstInitChild<A>;
 
@@ -49,6 +49,8 @@ export const isVal = <A>(a: InstEmit<A>): a is InstVal<A> => {
   return a.type === "value" || a.type === "init-child";
 };
 
+// TODO: remove mutual recursion, make this stack-safe somehow
+// see: actOnInit in batch-simultaneous.ts
 export const mapInit = <A, B>(a: InstInit<A>, fn: (i: A[]) => B[]): InstInit<B> => {
   switch (a.type) {
     case "init":
@@ -58,7 +60,7 @@ export const mapInit = <A, B>(a: InstInit<A>, fn: (i: A[]) => B[]): InstInit<B> 
         type: "init-merge",
         take: a.take,
         numSyncChildren: a.numSyncChildren,
-        children: a.children.map((child) => mapInit(child, fn)),
+        syncParents: a.syncParents.map((parent) => mapInit(parent, fn)),
       };
     case "init-child":
       return {
@@ -70,6 +72,7 @@ export const mapInit = <A, B>(a: InstInit<A>, fn: (i: A[]) => B[]): InstInit<B> 
   }
 };
 
+// TODO: remove mutual recursion, make this stack-safe somehow
 export const mapVal = <A, B>(a: InstVal<A>, fn: (i: A) => B): InstVal<B> => {
   switch (a.type) {
     case "value":
@@ -95,9 +98,9 @@ export const initEq = <A>(a: InstInit<A>, b: InstInit<A>): boolean => {
       return a.provenance === b.provenance;
     case "init-merge":
       if (b.type !== "init-merge") return false;
-      const zipped = zip(a.children, b.children);
-      return zipped.every(([childA, childB]) => {
-        if (childA === undefined || childB === undefined) {
+      const zipped = zip(a.syncParents, b.syncParents);
+      return zipped.every(([parentA, parentB]) => {
+        if (parentA === undefined || parentB === undefined) {
           return false;
         }
         return initEq(a, b);

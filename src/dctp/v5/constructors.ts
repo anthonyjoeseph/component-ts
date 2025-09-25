@@ -14,7 +14,7 @@ export const cold = <T>(
       r.of({
         type: "init",
         provenance,
-      } satisfies InstInitPlain<T>),
+      } satisfies InstInitPlain),
       new Observable(subscribe).pipe(
         r.map(
           (value) =>
@@ -23,14 +23,14 @@ export const cold = <T>(
               init: {
                 type: "init",
                 provenance,
-              } satisfies InstInitPlain<T>,
+              } satisfies InstInitPlain,
               value,
             }) satisfies InstValPlain<T>
         )
       ),
       r.of({
         type: "close",
-        init: { type: "init", provenance } satisfies InstInitPlain<T>,
+        init: { type: "init", provenance } satisfies InstInitPlain,
       } satisfies InstClose<T>)
     );
   });
@@ -82,14 +82,14 @@ export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.Subs
         r.of({
           type: "init",
           provenance: this._provenance,
-        } satisfies InstInitPlain<T>),
+        } satisfies InstInitPlain),
         this.internalSubject,
         r.of({
           type: "close",
           init: {
             type: "init",
             provenance: this._provenance,
-          } satisfies InstInitPlain<T>,
+          } satisfies InstInitPlain,
         } satisfies InstClose<T>)
       )
       .subscribe({
@@ -116,7 +116,7 @@ export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.Subs
       init: {
         type: "init",
         provenance: this._provenance,
-      } satisfies InstInitPlain<T>,
+      } satisfies InstInitPlain,
       value,
     } satisfies InstValPlain<T>);
   }

@@ -25,7 +25,7 @@ export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> =>
     {
       type: "init",
       provenance,
-    } satisfies InstInitPlain<As[number]>,
+    } satisfies InstInitPlain,
     ...a.map(
       (value) =>
         ({
@@ -33,7 +33,7 @@ export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> =>
           init: {
             type: "init",
             provenance,
-          } satisfies InstInitPlain<As[number]>,
+          } satisfies InstInitPlain,
           value,
         }) satisfies InstValPlain<As[number]>
     ),
@@ -42,7 +42,7 @@ export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> =>
       init: {
         type: "init",
         provenance,
-      } satisfies InstInitPlain<As[number]>,
+      } satisfies InstInitPlain,
     } satisfies InstClose<As[number]>
   );
 };
@@ -128,7 +128,7 @@ export const take =
                   return {
                     ...init,
                     take: init.take === undefined ? takeNum : Math.min(init.take, takeNum),
-                    children: init.children,
+                    parents: init.parents,
                   } satisfies InstInitMerge<A>;
               }
             };

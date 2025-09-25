@@ -90,13 +90,16 @@ const wrapChildEmit = <A>(
 export const mergeAll =
   <A>(concurrent?: number) =>
   (insts: Instantaneous<Instantaneous<A>>): Instantaneous<A> => {
-    let parentInit: InstInit<A>;
     const retval = insts.pipe(
       batchSync(),
       r.map((nested) => {
-        const handleVal = (input: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
+        const handleVal = (
+          parentInit: { contained: InstInit<A> },
+          input: InstEmit<Instantaneous<A>>
+        ): Instantaneous<A> => {
           if (input.type === "init" || input.type === "init-merge") {
-            return r.of(mapInit(input, () => []));
+            parentInit.contained = mapInit(input, () => []);
+            return r.of(parentInit.contained);
           }
           if (isVal(input)) {
             if (input.type === "init-child") {
@@ -105,7 +108,7 @@ export const mergeAll =
                   value.pipe(
                     batchSync(),
                     r.mergeMap((emit2) => {
-                      return r.of(...wrapChildEmit(emit2, parentInit));
+                      return r.of(...wrapChildEmit(emit2, parentInit.contained));
                     })
                   )
                 )
@@ -115,7 +118,7 @@ export const mergeAll =
               input.value.pipe(
                 batchSync(),
                 r.mergeMap((emit2) => {
-                  return r.of(...wrapChildEmit(emit2, parentInit));
+                  return r.of(...wrapChildEmit(emit2, parentInit.contained));
                 })
               )
             );
@@ -126,14 +129,18 @@ export const mergeAll =
         if (nested.type === "sync") {
           const inits = nested.value.filter(isInit);
           const nonInits = nested.value.filter((x) => !isInit(x));
-          parentInit = {
-            type: "init-merge",
-            children: inits.map((init) => mapInit(init, () => [])),
-            numSyncChildren: nonInits.filter(isVal).length, // everything but the 'closes'
-          } satisfies InstInitMerge<A>;
-          return r.merge(r.of(parentInit), ...nonInits.map(handleVal));
+          const storedParentInits = range(0, nonInits.length).map(() => ({ contained: null as never }));
+          return r.merge(
+            r.of({
+              type: "init-merge",
+              syncParents: inits.map((init) => mapInit(init, () => [])),
+              numSyncChildren: nonInits.filter(isVal).length, // everything but the 'closes'
+            } satisfies InstInitMerge<A>),
+            ...nonInits.map((val, index) => handleVal(storedParentInits[index]!, val))
+          );
         }
-        return handleVal(nested.value);
+        const asyncParentInit = { contained: null as never };
+        return handleVal(asyncParentInit, nested.value);
       }),
       r.mergeAll(concurrent)
     );
@@ -147,7 +154,7 @@ export const switchAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantane
       const closePrev =
         previousInit !== undefined ? r.of({ type: "close", init: previousInit } satisfies InstClose<A>) : r.EMPTY;
       if (emit.type === "init" || emit.type === "init-merge") {
-        previousInit = mapInit(emit, () => null as never);
+        previousInit = mapInit(emit, () => []);
         return r.merge(closePrev, r.of(previousInit));
       }
       if (isVal(emit)) {
