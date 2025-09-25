@@ -13,6 +13,7 @@ import {
   InstValPlain,
   isInit,
   isVal,
+  mapInit,
   mapVal,
 } from "./types";
 
@@ -24,7 +25,7 @@ export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> =>
     {
       type: "init",
       provenance,
-    } satisfies InstInitPlain,
+    } satisfies InstInitPlain<As[number]>,
     ...a.map(
       (value) =>
         ({
@@ -32,7 +33,7 @@ export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> =>
           init: {
             type: "init",
             provenance,
-          } satisfies InstInitPlain,
+          } satisfies InstInitPlain<As[number]>,
           value,
         }) satisfies InstValPlain<As[number]>
     ),
@@ -41,8 +42,8 @@ export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> =>
       init: {
         type: "init",
         provenance,
-      } satisfies InstInitPlain,
-    } satisfies InstClose
+      } satisfies InstInitPlain<As[number]>,
+    } satisfies InstClose<As[number]>
   );
 };
 
@@ -52,14 +53,14 @@ export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {
   }
   const subj = new Subject<InstEmit<A>>();
   let isSubscribed = false;
-  let init: InstInit | undefined;
+  let init: InstInit<A> | undefined;
   return r.defer(() => {
     let subscription: r.Subscription;
     if (!isSubscribed) {
       subscription = inst.subscribe({
         next: (emit) => {
           if (!init) {
-            init = emit as InstInit;
+            init = emit as InstInit<A>;
           }
           subj.next(emit);
         },
@@ -88,14 +89,10 @@ export const map =
     return inst.pipe(
       r.map((a) =>
         isVal(a)
-          ? mapVal(
-              a,
-              (rootVal): InstValPlain<B> => ({
-                ...rootVal,
-                value: fn(rootVal.value),
-              })
-            )
-          : a
+          ? mapVal(a, fn)
+          : isInit(a)
+            ? mapInit(a, (as) => as.map(fn))
+            : ({ type: "close", init: mapInit(a.init, (as) => as.map(fn)) } satisfies InstClose<B>)
       )
     );
   };
@@ -112,27 +109,27 @@ export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) =>
 export const take =
   (takeNum: number) =>
   <A>(inst: Instantaneous<A>): Instantaneous<A> => {
-    let init: InstInit | undefined;
+    let init: InstInit<A> | undefined;
     return r.concat(
       inst.pipe(
         r.map((a) => {
           if (isInit(a)) {
             init = a;
-            const addTake = (init: InstInit): InstInit => {
+            const addTake = (init: InstInit<A>): InstInit<A> => {
               switch (init.type) {
                 case "init":
                   return { ...init, take: init.take === undefined ? takeNum : Math.min(init.take, takeNum) };
                 case "init-child":
                   return {
                     ...init,
-                    own: addTake(init.own),
-                  } satisfies InstInitChild;
+                    init: addTake(init.init),
+                  } satisfies InstInitChild<A>;
                 case "init-merge":
                   return {
                     ...init,
                     take: init.take === undefined ? takeNum : Math.min(init.take, takeNum),
                     children: init.children,
-                  } satisfies InstInitMerge;
+                  } satisfies InstInitMerge<A>;
               }
             };
             return addTake(a);
@@ -141,11 +138,11 @@ export const take =
         }),
         r.take(takeNum)
       ),
-      r.of({ type: "close", init: init as InstInit } satisfies InstClose)
+      r.of({ type: "close", init: init as InstInit<A> } satisfies InstClose<A>)
     );
   };
 
 export const fromInstantaneous: <A>(obs: Instantaneous<A>) => r.Observable<A> = r.pipe(
-  r.filter((emit) => emit.type === "value" || emit.type === "value-sync"),
-  r.mergeMap((emit) => (emit.type === "value" ? r.of(emit.value) : r.of(...emit.values)))
+  r.filter((emit) => emit.type === "value" || emit.type === "init-child"),
+  r.mergeMap((emit) => (emit.type === "value" ? r.of(emit.value) : r.of(...emit.syncVals)))
 );

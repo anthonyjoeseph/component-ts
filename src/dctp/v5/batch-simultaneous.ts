@@ -10,11 +10,10 @@ import {
   InstInitMerge,
   InstInitPlain,
   InstVal,
-  InstValFiltered,
   InstValPlain,
-  InstValSync,
   isInit,
   isVal,
+  mapInit,
   mapVal,
 } from "./types";
 import { map, share } from "./basic-primitives";
@@ -25,23 +24,20 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
   return inst.pipe(
     r.map((a) => {
       console.log(a);
-      if (isVal(a)) {
-        return mapVal(a, (full) => ({
-          ...full,
-          value: [full.value],
-        }));
+      if (isInit(a)) {
+        return mapInit(a, (full) => [full]);
+      } else if (isVal(a)) {
+        return mapVal(a, (full) => [full]);
       }
-      return a;
+      return { type: "close", init: mapInit(a.init, () => []) } satisfies InstClose<A[]>;
     })
   );
 };
 
 /**
  * NOTES
- * - after a "filtered" value, there will always be an 'init-child' and a 'value-sync'
- *   - we should wait for these
- *   - this also means that our "EMPTY" needs to emit an 'init' and a 'close'
- *     - b/c we are using the native 'switchMap', which will filter it out entirely otherwise
+ * - can we get rid of the "take" stuff in the emit types?
+ *   - the "close" events should be enough, no?
  * - after an 'init-merge', there will always be a constant number of 'init-childs', equal to the number emitted by the topmost 'batchSync'
  *   - we should wait for these
  * - inits should be changed - output different from input

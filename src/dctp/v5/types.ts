@@ -2,81 +2,93 @@ import * as r from "rxjs";
 import Observable = r.Observable;
 import zip from "lodash/zip";
 
-export type InstInitPlain = {
+export type InstInitPlain<A> = {
   type: "init";
   provenance: symbol;
   take?: number;
 };
 
-export type InstInitMerge = {
+export type InstInitMerge<A> = {
   type: "init-merge";
   numSyncChildren: number;
   take?: number;
-  children: InstInit[];
+  children: InstInit<A>[];
 };
 
-export type InstInitChild = {
+export type InstInitChild<A> = {
   type: "init-child";
-  parent: InstInit;
-  own: InstInit;
+  parent: InstInit<A>;
+  init: InstInit<A>;
+  syncVals: A[];
 };
 
 export type InstValPlain<A> = {
   type: "value";
   value: A;
-  init: InstInit;
+  init: InstInit<A>;
 };
 
-export type InstValSync<A> = {
-  type: "value-sync";
-  values: A[];
-  init: InstInit;
-};
-
-export type InstValFiltered = {
-  type: "value-filtered";
-  init: InstInit;
-};
-
-export type InstClose = {
+export type InstClose<A> = {
   type: "close";
-  init: InstInit;
+  init: InstInit<A>;
 };
 
-export type InstInit = InstInitPlain | InstInitMerge | InstInitChild;
+export type InstInit<A> = InstInitPlain<A> | InstInitMerge<A> | InstInitChild<A>;
 
-export type InstVal<A> = InstValPlain<A> | InstValSync<A> | InstValFiltered;
+export type InstVal<A> = InstValPlain<A> | InstInitChild<A>;
 
-export type InstEmit<A> = InstInit | InstVal<A> | InstClose;
+export type InstEmit<A> = InstInit<A> | InstVal<A> | InstClose<A>;
 
 export type Instantaneous<A> = Observable<InstEmit<A>>;
 
-export const isInit = <A>(a: InstEmit<A>): a is InstInit => {
+export const isInit = <A>(a: InstEmit<A>): a is InstInit<A> => {
   return a.type === "init" || a.type === "init-merge" || a.type === "init-child";
 };
 
 export const isVal = <A>(a: InstEmit<A>): a is InstVal<A> => {
-  return a.type === "value" || a.type === "value-filtered" || a.type === "value-sync";
+  return a.type === "value" || a.type === "init-child";
 };
 
-export const mapVal = <A, B>(a: InstVal<A>, fn: (i: InstValPlain<A>) => InstValPlain<B>): InstVal<B> => {
+export const mapInit = <A, B>(a: InstInit<A>, fn: (i: A[]) => B[]): InstInit<B> => {
   switch (a.type) {
-    case "value":
-      return fn(a);
-    case "value-sync":
-      return {
-        ...a,
-        values: a.values
-          .map((value) => ({ type: "value", init: a.init, value }) satisfies InstValPlain<A>)
-          .map(fn)
-          .map((plain) => plain.value),
-      };
-    case "value-filtered":
+    case "init":
       return a;
+    case "init-merge":
+      return {
+        type: "init-merge",
+        take: a.take,
+        numSyncChildren: a.numSyncChildren,
+        children: a.children.map((child) => mapInit(child, fn)),
+      };
+    case "init-child":
+      return {
+        type: "init-child",
+        parent: mapInit(a.parent, fn),
+        init: mapInit(a.init, fn),
+        syncVals: fn(a.syncVals),
+      };
   }
 };
 
-export const initEq = <A>(a: InstInit, b: InstInit): boolean => {
+export const mapVal = <A, B>(a: InstVal<A>, fn: (i: A) => B): InstVal<B> => {
+  switch (a.type) {
+    case "value":
+      return {
+        type: "value",
+        init: mapInit(a.init, (as) => as.map(fn)),
+        value: fn(a.value),
+      };
+    case "init-child":
+      return {
+        type: "init-child",
+        init: mapInit(a.init, (as) => as.map(fn)),
+        parent: mapInit(a.parent, (as) => as.map(fn)),
+        syncVals: a.syncVals.map(fn),
+      } satisfies InstInitChild<B>;
+  }
+};
+
+export const initEq = <A>(a: InstInit<A>, b: InstInit<A>): boolean => {
   switch (a.type) {
     case "init":
       if (b.type !== "init") return false;
@@ -92,6 +104,6 @@ export const initEq = <A>(a: InstInit, b: InstInit): boolean => {
       });
     case "init-child":
       if (b.type !== "init-child") return false;
-      return initEq(a.own, b.own) && initEq(a.parent, b.parent);
+      return initEq(a.init, b.init) && initEq(a.parent, b.parent);
   }
 };

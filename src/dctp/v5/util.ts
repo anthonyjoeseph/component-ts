@@ -14,6 +14,12 @@ export const switchMap =
     return pipeWith(inst, map(fn), switchAll);
   };
 
+export const mergeMap =
+  <A, B>(fn: (a: A) => Instantaneous<B>) =>
+  (inst: Instantaneous<A>): Instantaneous<B> => {
+    return pipeWith(inst, map(fn), mergeAll());
+  };
+
 export const scan =
   <A, B>(initial: B, fn: (acc: B, cur: A) => B) =>
   (ob: Instantaneous<A>): Instantaneous<B> => {
