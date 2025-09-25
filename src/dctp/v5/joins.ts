@@ -129,14 +129,19 @@ export const mergeAll =
         if (nested.type === "sync") {
           const inits = nested.value.filter(isInit);
           const nonInits = nested.value.filter((x) => !isInit(x));
-          const storedParentInits = range(0, nonInits.length).map(() => ({ contained: null as never }));
+          const storedParentInits = inits.map((init) => ({ contained: mapInit(init, () => []) }));
           return r.merge(
             r.of({
               type: "init-merge",
               syncParents: inits.map((init) => mapInit(init, () => [])),
               numSyncChildren: nonInits.filter(isVal).length, // everything but the 'closes'
             } satisfies InstInitMerge<A>),
-            ...nonInits.map((val, index) => handleVal(storedParentInits[index]!, val))
+            ...nonInits.map((val) => {
+              const init = inits.find((init) => initEq(val.init, init));
+              const contained =
+                init !== undefined ? { contained: mapInit(init, () => []) } : { contained: null as never };
+              return handleVal(contained, val);
+            })
           );
         }
         const asyncParentInit = { contained: null as never };

@@ -133,11 +133,13 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
 
           if (canEmitBatch(memory, a)) {
             const memoryEntry = memory.get(provenanceIC)!;
+            const emitBatch = memoryEntry.batch;
+            updateMap(memory, provenanceIC, (state) => ({ ...state, batch: [], awaitingValueCount: state.totalNum }));
             return r.of({
               type: "init-child",
               parent: mapInit(a.parent, () => []),
               init: mapInit(a.init, () => []),
-              syncVals: [memoryEntry.batch, a.syncVals],
+              syncVals: [emitBatch, a.syncVals],
             } satisfies InstInitChild<A[]>);
           }
           return r.EMPTY;
@@ -193,10 +195,12 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
           });
           if (canEmitBatch(memory, a)) {
             const memoryEntry = memory.get(provenanceV)!;
+            const emitBatch = memoryEntry.batch;
+            updateMap(memory, provenanceV, (state) => ({ ...state, batch: [], awaitingValueCount: state.totalNum }));
             return r.of({
               type: "value",
               init: mapInit(a.init, () => []),
-              value: memoryEntry.batch,
+              value: emitBatch,
             } satisfies InstValPlain<A[]>);
           }
           return r.EMPTY;
@@ -229,13 +233,6 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
  *   - the "close" events should be enough, no?
  * - after an 'init-merge', there will always be a constant number of 'init-childs', equal to the number emitted by the topmost 'batchSync'
  *   - we should wait for these
- * - inits & closes should be changed - output different from input
- *   - only one 'init' and one 'close' per provenance, since they are batched
- *   - 'InstValSync' parent's provenance should also be included
- *     - this covers all cases with "multiple" provenances
- *       - e.g. parent.switchMap(e => of(e))
- *         it technically emits on it's parent's provenance
- *         but it also has its child's provenance (the 'of')
- *     - this also means that 'InitChild' must be preserved, so that
- *       any deeper 'batchSimul' fns will have access to parent info
+ * - can we get rid of `numSyncChildren`?
+ *   - a superset of the same information is in `syncParents`
  */
