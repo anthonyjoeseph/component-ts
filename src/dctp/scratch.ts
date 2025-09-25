@@ -3,7 +3,6 @@ import { fromInstantaneous, map, of, EMPTY, share } from "./v5/basic-primitives"
 import { batchSimultaneous } from "./v5/batch-simultaneous";
 import { mergeAll } from "./v5/joins";
 import { merge, switchMap } from "./v5/util";
-import { batchSync } from "./batch-sync";
 
 const a = cold<number>((subscriber) => {
   let count = 0;

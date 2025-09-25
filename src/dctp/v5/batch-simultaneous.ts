@@ -44,4 +44,13 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
  *     - b/c we are using the native 'switchMap', which will filter it out entirely otherwise
  * - after an 'init-merge', there will always be a constant number of 'init-childs', equal to the number emitted by the topmost 'batchSync'
  *   - we should wait for these
+ * - inits should be changed - output different from input
+ *   - only one 'init' per provenance, since they are batched
+ *   - 'InstValSync' parent's provenance should also be included
+ *     - this covers all cases with "multiple" provenances
+ *       - e.g. parent.switchMap(e => of(e))
+ *         it technically emits on it's parent's provenance
+ *         but it also has its child's provenance (the 'of')
+ *     - this also means that 'InitChild' must be preserved, so that
+ *       any deeper 'batchSimul' fns will have access to parent info
  */
