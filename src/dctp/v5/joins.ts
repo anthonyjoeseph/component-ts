@@ -129,22 +129,117 @@ export const mergeAll =
           const inits = nested.value.filter((v) => v.type === "init");
           const initChilds = nested.value.filter((v) => v.type === "init-child");
           const values = nested.value.filter((v) => v.type === "value");
+          const closes = nested.value.filter((v) => v.type === "close");
           return r.merge(
-            ...inits.map((init) => {
-              return handleVal({ contained: null as never }, init);
-            }),
-            ...initChilds.flatMap((initChild) => {
-              return initChild.syncVals.map((val) => {
-                const contained = { contained: mapInit(initChild.parent, () => []) };
-                return handleVal(contained, { type: "value", init: initChild.init, value: val });
-              });
-            }),
-            ...values.map((val) => {
-              const init = inits.find((init) => initEq(val.init, init));
-              const contained =
-                init !== undefined ? { contained: mapInit(init, () => []) } : { contained: null as never };
-              return handleVal(contained, val);
-            })
+            ...inits.map((init) => r.of(init)),
+            r
+              .merge(
+                ...initChilds.flatMap((initChild) => {
+                  return initChild.syncVals.map((val) => {
+                    return val.pipe(
+                      r.map((emit): InstEmit<A> => {
+                        if (emit.type === "init") {
+                          return {
+                            type: "init-child",
+                            parent: mapInit(initChild, () => []),
+                            init: emit,
+                            syncVals: [],
+                          } satisfies InstInitChild<A>;
+                        } else if (emit.type === "init-child") {
+                          return {
+                            type: "init-child",
+                            parent: mapInit(initChild, () => []),
+                            init: emit,
+                            syncVals: emit.syncVals,
+                          } satisfies InstInitChild<A>;
+                        } else if (emit.type === "value") {
+                          return {
+                            type: "value",
+                            init: {
+                              type: "init-child",
+                              parent: mapInit(initChild, () => []),
+                              init: emit.init,
+                              syncVals: [],
+                            } satisfies InstInitChild<A>,
+                            value: emit.value,
+                          } satisfies InstValPlain<A>;
+                        } else {
+                          return {
+                            type: "close",
+                            init: {
+                              type: "init-child",
+                              parent: mapInit(initChild, () => []),
+                              init: emit.init,
+                              syncVals: [],
+                            } satisfies InstInitChild<A>,
+                          } satisfies InstClose<A>;
+                        }
+                      })
+                    );
+                  });
+                }),
+                ...values.map((val) => {
+                  return val.value.pipe(
+                    r.map((emit): InstEmit<A> => {
+                      if (emit.type === "init") {
+                        return {
+                          type: "init-child",
+                          parent: mapInit(val.init, () => []),
+                          init: emit,
+                          syncVals: [],
+                        } satisfies InstInitChild<A>;
+                      } else if (emit.type === "init-child") {
+                        return {
+                          type: "init-child",
+                          parent: mapInit(val.init, () => []),
+                          init: emit,
+                          syncVals: emit.syncVals,
+                        } satisfies InstInitChild<A>;
+                      } else if (emit.type === "value") {
+                        return {
+                          type: "value",
+                          init: {
+                            type: "init-child",
+                            parent: mapInit(val.init, () => []),
+                            init: emit.init,
+                            syncVals: [],
+                          } satisfies InstInitChild<A>,
+                          value: emit.value,
+                        } satisfies InstValPlain<A>;
+                      } else {
+                        return {
+                          type: "close",
+                          init: {
+                            type: "init-child",
+                            parent: mapInit(val.init, () => []),
+                            init: emit.init,
+                            syncVals: [],
+                          } satisfies InstInitChild<A>,
+                        } satisfies InstClose<A>;
+                      }
+                    })
+                  );
+                })
+              )
+              .pipe(
+                batchSync(),
+                r.mergeMap((nestedEmits): Instantaneous<A> => {
+                  if (nestedEmits.type === "sync") {
+                    const inits = nestedEmits.value.filter((v) => v.type === "init");
+                    const initChilds = nestedEmits.value.filter((v) => v.type === "init-child");
+                    const values = nestedEmits.value.filter((v) => v.type === "value");
+                    const closes = nestedEmits.value.filter((v) => v.type === "close");
+                    return r.merge(
+                      ...inits.map((x) => r.of(x)),
+                      ...initChilds.map((x) => r.of(x)),
+                      ...values.map((x) => r.of(x)),
+                      ...closes.map((x) => r.of(x))
+                    );
+                  }
+                  return r.of(nestedEmits.value);
+                })
+              ),
+            ...closes.map((c) => r.of({ type: "close", init: mapInit(c.init, () => []) } satisfies InstClose<A>))
           );
         }
         const asyncParentInit = { contained: null as never };

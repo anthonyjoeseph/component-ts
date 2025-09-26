@@ -20,30 +20,36 @@ export const EMPTY = r.defer(() => of());
 
 export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> => {
   const provenance = uuid() as unknown as symbol;
-  return r.of(
-    {
-      type: "init",
-      provenance,
-    } satisfies InstInitPlain,
-    ...a.map(
-      (value) =>
-        ({
-          type: "value",
-          init: {
-            type: "init",
-            provenance,
-          } satisfies InstInitPlain,
-          value,
-        }) satisfies InstValPlain<As[number]>
-    ),
-    {
-      type: "close",
-      init: {
+  return r
+    .of(
+      {
         type: "init",
         provenance,
       } satisfies InstInitPlain,
-    } satisfies InstClose<As[number]>
-  );
+      ...a.map(
+        (value) =>
+          ({
+            type: "value",
+            init: {
+              type: "init",
+              provenance,
+            } satisfies InstInitPlain,
+            value,
+          }) satisfies InstValPlain<As[number]>
+      ),
+      {
+        type: "close",
+        init: {
+          type: "init",
+          provenance,
+        } satisfies InstInitPlain,
+      } satisfies InstClose<As[number]>
+    )
+    .pipe(
+      r.tap((val) => {
+        console.log(val);
+      })
+    );
 };
 
 export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {

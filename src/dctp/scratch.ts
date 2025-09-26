@@ -4,7 +4,7 @@ import { batchSimultaneous } from "./v5/batch-simultaneous";
 import { mergeAll } from "./v5/joins";
 import { merge, switchMap } from "./v5/util";
 
-const a = cold<number>((subscriber) => {
+/* const a = cold<number>((subscriber) => {
   let count = 0;
   const intervalId = setInterval(() => {
     if (count > 2) {
@@ -13,9 +13,9 @@ const a = cold<number>((subscriber) => {
     }
     subscriber.next(count++);
   }, 1000);
-}).pipe(share);
+}).pipe(share); */
 
-// const a = of(0, 1, 2);
+const a = of(0, 1, 2).pipe(share);
 
 const merged = of(a, a.pipe(map((n) => n * 2))).pipe(mergeAll(), batchSimultaneous, fromInstantaneous);
 
