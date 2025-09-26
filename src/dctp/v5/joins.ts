@@ -6,7 +6,6 @@ import {
   InstEmit,
   InstInit,
   InstInitChild,
-  InstInitMerge,
   InstVal,
   InstValPlain,
   isInit,
@@ -49,7 +48,7 @@ const wrapChildEmit = <A>(
     });
   } else {
     const childEmit = childEmitGroup.value;
-    if (childEmit.type === "init" || childEmit.type === "init-merge") {
+    if (childEmit.type === "init") {
       return [
         {
           type: "init-child",
@@ -97,7 +96,7 @@ export const mergeAll =
           parentInit: { contained: InstInit<A> },
           input: InstEmit<Instantaneous<A>>
         ): Instantaneous<A> => {
-          if (input.type === "init" || input.type === "init-merge") {
+          if (input.type === "init") {
             parentInit.contained = mapInit(input, () => []);
             return r.of(parentInit.contained);
           }
@@ -127,15 +126,20 @@ export const mergeAll =
         };
 
         if (nested.type === "sync") {
-          const inits = nested.value.filter(isInit);
-          const nonInits = nested.value.filter((x) => !isInit(x));
+          const inits = nested.value.filter((v) => v.type === "init");
+          const initChilds = nested.value.filter((v) => v.type === "init-child");
+          const values = nested.value.filter((v) => v.type === "value");
           return r.merge(
-            r.of({
-              type: "init-merge",
-              syncParents: inits.map((init) => mapInit(init, () => [])),
-              numSyncChildren: nonInits.filter(isVal).length, // everything but the 'closes'
-            } satisfies InstInitMerge<A>),
-            ...nonInits.map((val) => {
+            ...inits.map((init) => {
+              return handleVal({ contained: null as never }, init);
+            }),
+            ...initChilds.flatMap((initChild) => {
+              return initChild.syncVals.map((val) => {
+                const contained = { contained: mapInit(initChild.parent, () => []) };
+                return handleVal(contained, { type: "value", init: initChild.init, value: val });
+              });
+            }),
+            ...values.map((val) => {
               const init = inits.find((init) => initEq(val.init, init));
               const contained =
                 init !== undefined ? { contained: mapInit(init, () => []) } : { contained: null as never };
@@ -157,7 +161,7 @@ export const switchAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantane
     r.map((emit): Instantaneous<A> => {
       const closePrev =
         previousInit !== undefined ? r.of({ type: "close", init: previousInit } satisfies InstClose<A>) : r.EMPTY;
-      if (emit.type === "init" || emit.type === "init-merge") {
+      if (emit.type === "init") {
         previousInit = mapInit(emit, () => []);
         return r.merge(closePrev, r.of(previousInit));
       }
@@ -212,7 +216,7 @@ export const concatAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantane
 
   const concatOutputs: Instantaneous<A> = sharedInput.pipe(
     r.map((emit): Instantaneous<A> => {
-      if (emit.type === "init" || emit.type === "init-merge") {
+      if (emit.type === "init") {
         currentInit = mapInit(emit, () => []);
         return r.of(currentInit);
       }
@@ -265,7 +269,7 @@ export const exhaustAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantan
 
   const exhaustOutputs: Instantaneous<A> = sharedInput.pipe(
     r.map((emit): Instantaneous<A> => {
-      if (emit.type === "init" || emit.type === "init-merge") {
+      if (emit.type === "init") {
         currentInit = mapInit(emit, () => []);
         return r.of(currentInit);
       }

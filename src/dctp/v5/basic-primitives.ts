@@ -8,7 +8,6 @@ import {
   InstEmit,
   InstInit,
   InstInitChild,
-  InstInitMerge,
   InstInitPlain,
   InstValPlain,
   isInit,
@@ -91,7 +90,7 @@ export const map =
         isVal(a)
           ? mapVal(a, fn)
           : isInit(a)
-            ? mapInit(a, (as) => as.map(fn))
+            ? a
             : ({ type: "close", init: mapInit(a.init, (as) => as.map(fn)) } satisfies InstClose<B>)
       )
     );
@@ -124,12 +123,6 @@ export const take =
                     ...init,
                     init: addTake(init.init),
                   } satisfies InstInitChild<A>;
-                case "init-merge":
-                  return {
-                    ...init,
-                    take: init.take === undefined ? takeNum : Math.min(init.take, takeNum),
-                    parents: init.parents,
-                  } satisfies InstInitMerge<A>;
               }
             };
             return addTake(a);

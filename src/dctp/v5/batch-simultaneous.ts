@@ -7,7 +7,6 @@ import {
   InstEmit,
   InstInit,
   InstInitChild,
-  InstInitMerge,
   InstInitPlain,
   InstVal,
   InstValPlain,
@@ -35,7 +34,6 @@ const actOnInit = <A>(
   init: InstInit<A>,
   actions: {
     plain?: (val: InstInitPlain) => void;
-    merge?: (val: InstInitMerge<A>) => void;
     child?: (val: InstInitChild<A>) => void;
   }
 ) => {
@@ -45,10 +43,6 @@ const actOnInit = <A>(
     switch (currentInit.type) {
       case "init":
         actions.plain?.(currentInit);
-        break;
-      case "init-merge":
-        actions.merge?.(currentInit);
-        initQueue.push(...currentInit.syncParents);
         break;
       case "init-child":
         actions.child?.(currentInit);
@@ -67,9 +61,6 @@ const getProvenance = <A>(init: InstInit<A>): symbol => {
     switch (currentInit.type) {
       case "init":
         return currentInit.provenance;
-      case "init-merge":
-        initQueue.push(...currentInit.syncParents);
-        break;
       case "init-child":
         initQueue.push(currentInit.parent);
         initQueue.push(currentInit.init);
@@ -138,28 +129,6 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
               init: mapInit(a.init, () => []),
               syncVals: [emitBatch, a.syncVals],
             } satisfies InstInitChild<A[]>);
-          }
-          return r.EMPTY;
-        case "init-merge":
-          const allSiblings = a.syncParents.map(getProvenance);
-          for (const parentInit of a.syncParents) {
-            const provenanceIM = getProvenance(parentInit);
-
-            if (memory.has(provenanceIM)) {
-              updateMap(memory, provenanceIM, (state) => {
-                return {
-                  ...state,
-                  totalNum: state.totalNum + 1,
-                };
-              });
-            } else {
-              memory.set(provenanceIM, {
-                awaitingInitCount: allSiblings.filter((s) => s === provenanceIM).length,
-                awaitingValueCount: 0,
-                batch: [],
-                totalNum: allSiblings.filter((s) => s === provenanceIM).length,
-              });
-            }
           }
           return r.EMPTY;
         case "init":
