@@ -18,7 +18,6 @@ import {
 import ArrayKeyedMap from "array-keyed-map";
 
 type ProvenanceState<A> = {
-  awaitingInitCount: number;
   awaitingValueCount: number;
   totalNum: number;
   batch: A[];
@@ -72,26 +71,12 @@ const getProvenance = <A>(init: InstInit<A>): symbol => {
 };
 
 const canEmitBatch = <A>(memory: Map<symbol, ProvenanceState<A>>, value: InstVal<A>): boolean => {
-  if (value.type === "value") {
-    const init = value.init;
-    if (init.type === "init-child") {
-      const parentProv = getProvenance(init.parent);
-      const parentState = memory.get(parentProv)!;
-      if (parentState.awaitingInitCount > 0) {
-        updateMap(memory, parentProv, (state) => ({ ...state, awaitingInitCount: state.awaitingInitCount - 1 }));
-        return false;
-      }
-    }
-    return true;
-  } else {
-    const parentProv = getProvenance(value.parent);
-    const parentState = memory.get(parentProv)!;
-    if (parentState.awaitingInitCount > 0) {
-      updateMap(memory, parentProv, (state) => ({ ...state, awaitingInitCount: state.awaitingInitCount - 1 }));
-      return false;
-    }
+  const prov = getProvenance(value.init);
+  const state = memory.get(prov)!;
+  if (state.awaitingValueCount <= 0) {
     return true;
   }
+  return false;
 };
 
 export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]> => {
@@ -106,20 +91,19 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
             updateMap(memory, provenanceIC, (state) => {
               return {
                 ...state,
-                awaitingValueCount: state.awaitingValueCount - 1,
+                totalNum: state.totalNum + 1,
                 batch: [...state.batch, ...a.syncVals],
               };
             });
           } else {
             memory.set(provenanceIC, {
-              awaitingInitCount: 0,
               awaitingValueCount: 0,
               batch: a.syncVals,
               totalNum: 1,
             });
           }
 
-          if (canEmitBatch(memory, a)) {
+          if (canEmitBatch(memory, a) && a.syncVals.length > 0) {
             const memoryEntry = memory.get(provenanceIC)!;
             const emitBatch = memoryEntry.batch;
             updateMap(memory, provenanceIC, (state) => ({ ...state, batch: [], awaitingValueCount: state.totalNum }));
@@ -142,7 +126,6 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
             return r.EMPTY;
           }
           memory.set(a.provenance, {
-            awaitingInitCount: 0,
             awaitingValueCount: 0,
             batch: [],
             totalNum: 1,
@@ -153,7 +136,7 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
           updateMap(memory, provenanceV!, (state) => {
             return {
               ...state,
-              awaitingValueCount: state.awaitingValueCount - 1,
+              awaitingValueCount: state.awaitingValueCount === 0 ? state.totalNum - 1 : state.awaitingValueCount - 1,
               batch: [...state.batch, a.value],
             };
           });
