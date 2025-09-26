@@ -14,6 +14,7 @@ const a = cold<number>((subscriber) => {
     subscriber.next(count++);
   }, 1000);
 }).pipe(share);
+
 // const a = of(0, 1, 2);
 
 const merged = of(a, a.pipe(map((n) => n * 2))).pipe(mergeAll(), batchSimultaneous, fromInstantaneous);
@@ -23,4 +24,4 @@ const switched = merge(a, a.pipe(switchMap((e) => (e === 0 ? EMPTY : of(e))))).p
   fromInstantaneous
 );
 
-merged.subscribe();
+merged.subscribe(console.log);

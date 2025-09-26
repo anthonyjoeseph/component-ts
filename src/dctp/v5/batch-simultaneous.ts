@@ -19,7 +19,6 @@ import {
 import ArrayKeyedMap from "array-keyed-map";
 
 type ProvenanceState<A> = {
-  mergeParentSiblings: symbol[];
   awaitingInitCount: number;
   awaitingValueCount: number;
   totalNum: number;
@@ -108,7 +107,6 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
   const memory = new Map<symbol, ProvenanceState<A>>();
   return inst.pipe(
     r.mergeMap((a) => {
-      console.log(a);
       switch (a.type) {
         case "init-child":
           const provenanceIC = getProvenance(a.init);
@@ -123,7 +121,6 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
             });
           } else {
             memory.set(provenanceIC, {
-              mergeParentSiblings: [],
               awaitingInitCount: 0,
               awaitingValueCount: 0,
               batch: a.syncVals,
@@ -157,7 +154,6 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
               });
             } else {
               memory.set(provenanceIM, {
-                mergeParentSiblings: allSiblings.filter((s) => s !== provenanceIM),
                 awaitingInitCount: allSiblings.filter((s) => s === provenanceIM).length,
                 awaitingValueCount: 0,
                 batch: [],
@@ -177,7 +173,6 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
             return r.EMPTY;
           }
           memory.set(a.provenance, {
-            mergeParentSiblings: [],
             awaitingInitCount: 0,
             awaitingValueCount: 0,
             batch: [],

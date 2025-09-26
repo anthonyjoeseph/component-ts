@@ -129,7 +129,6 @@ export const mergeAll =
         if (nested.type === "sync") {
           const inits = nested.value.filter(isInit);
           const nonInits = nested.value.filter((x) => !isInit(x));
-          const storedParentInits = inits.map((init) => ({ contained: mapInit(init, () => []) }));
           return r.merge(
             r.of({
               type: "init-merge",
