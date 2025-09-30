@@ -60,41 +60,38 @@ const flipInside = <A>(emit: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
       );
   }
 
-  return r
-    .merge(
-      ...emit.children.map((child): r.Observable<InstEmit<A> | InstClose> => {
-        if (child.type === "close") {
-          return r.of(child);
-        }
-        if (child.type === "value") {
-          return child.value.pipe(
-            batchSync(),
-            r.map((batch) => {
-              if (batch.type === "async") {
-                return async({ provenance: emit.provenance, child: batch.value });
-              }
-              return init({ provenance: emit.provenance, children: batch.value });
-            })
-          );
-        }
-        return flipInside(child).pipe(
-          r.map((child) => {
-            if (child.type === "init") {
-              return init({ provenance: child.provenance, children: [child] });
+  return r.merge(
+    ...emit.children.map((child): r.Observable<InstEmit<A>> => {
+      if (child.type === "close") {
+        return r.of(async<A>({ provenance: emit.provenance, child }));
+      }
+      if (child.type === "value") {
+        return child.value.pipe(
+          batchSync(),
+          r.map((batch) => {
+            if (batch.type === "async") {
+              return async({ provenance: emit.provenance, child: batch.value });
             }
-            return async({ provenance: child.provenance, child });
+            return init({ provenance: emit.provenance, children: batch.value });
           })
         );
-      })
-    )
-    .pipe(
-      r.map((child) => {
-        if (child.type === "init") {
-          return init({ provenance: emit.provenance, children: [child] });
-        }
-        return async({ provenance: emit.provenance, child });
-      })
-    );
+      }
+      return flipInside(child).pipe(
+        r.map((child) => {
+          if (child.type === "init") {
+            return init({ provenance: child.provenance, children: [child] });
+          }
+          return async({ provenance: child.provenance, child });
+        }),
+        r.map((child) => {
+          if (child.type === "init") {
+            return init({ provenance: emit.provenance, children: [child] });
+          }
+          return async({ provenance: emit.provenance, child });
+        })
+      );
+    })
+  );
 };
 
 export const switchAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantaneous<A> => {
