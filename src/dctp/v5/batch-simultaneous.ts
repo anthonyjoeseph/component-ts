@@ -1,21 +1,21 @@
 import * as r from "rxjs";
 import Observable = r.Observable;
 import {
-  initEq,
   Instantaneous,
   InstClose,
   InstEmit,
   InstInit,
-  InstInitChild,
-  InstInitPlain,
+  InstAsync,
   InstVal,
-  InstValPlain,
+  async,
+  isAsync,
+  close,
+  init,
   isInit,
-  isVal,
-  mapInit,
-  mapVal,
+  map as mapPrimitive,
+  val,
+  values,
 } from "./types";
-import ArrayKeyedMap from "array-keyed-map";
 
 type ProvenanceState<A> = {
   awaitingValueCount: number;
@@ -23,163 +23,123 @@ type ProvenanceState<A> = {
   batch: A[];
 };
 
-const updateMap = <K, A>(aMap: Map<K, A>, key: K, fn: (a: A) => A): void => {
-  const val = aMap.get(key);
-  aMap.set(key, fn(val!));
+const mergeObjs = <K extends string | symbol | number, A>(arr: Record<K, A>[]): Record<K, A> => {
+  return arr.reduce((acc, cur) => ({ ...acc, ...cur }), {} as Record<K, A>);
 };
 
-// stack safe!
-const actOnInit = <A>(
-  init: InstInit<A>,
-  actions: {
-    plain?: (val: InstInitPlain) => void;
-    child?: (val: InstInitChild<A>) => void;
-  }
-) => {
-  let initQueue: InstInit<A>[] = [];
-  let currentInit: InstInit<A> | undefined = init;
-  while (currentInit !== undefined) {
-    switch (currentInit.type) {
-      case "init":
-        actions.plain?.(currentInit);
-        break;
-      case "init-child":
-        actions.child?.(currentInit);
-        initQueue.push(currentInit.parent);
-        initQueue.push(currentInit.init);
-        break;
+const groupInitSiblings = <A>(emit: InstEmit<A>): InstEmit<A[]> => {
+  if (emit.type === "async") {
+    if (emit.child == null || emit.child.type === "close") {
+      return emit as InstEmit<A[]>;
     }
-    currentInit = initQueue.pop();
-  }
-};
-
-const getProvenance = <A>(init: InstInit<A>): symbol => {
-  let initQueue: InstInit<A>[] = [];
-  let currentInit: InstInit<A> | undefined = init;
-  while (currentInit !== undefined) {
-    switch (currentInit.type) {
-      case "init":
-        return currentInit.provenance;
-      case "init-child":
-        initQueue.push(currentInit.parent);
-        initQueue.push(currentInit.init);
-        break;
+    if (emit.child.type === "value") {
+      return async({ provenance: emit.provenance, child: val([emit.child.value]) });
     }
-    currentInit = initQueue.pop();
+    return groupInitSiblings(emit);
   }
-  throw new Error("could not find provenance!");
+  const consolidatedVal = val(emit.children.filter((child) => child.type === "value").map((v) => v.value));
+  const otherChildren = emit.children
+    .filter((child) => child.type !== "value")
+    .map((child) => {
+      if (child.type === "close") return child;
+      return groupInitSiblings(child);
+    });
+  return init({
+    provenance: emit.provenance,
+    children: [...otherChildren, consolidatedVal],
+  });
 };
 
-const canEmitBatch = <A>(memory: Map<symbol, ProvenanceState<A>>, value: InstVal<A>): boolean => {
-  const prov = getProvenance(value.init);
-  const state = memory.get(prov)!;
-  if (state.awaitingValueCount <= 0) {
-    return true;
+const batchAsync = <A>(emit: InstAsync<A>, memory: Record<symbol, ProvenanceState<A>>): InstEmit<A[]> | null => {
+  const entry = memory[emit.provenance]!;
+  const awaitingValueCount = entry?.awaitingValueCount ?? Number.POSITIVE_INFINITY;
+  if (awaitingValueCount > 0) {
+    return null;
   }
-  return false;
+  const fullBatch = emit.child?.type === "value" ? [...entry.batch, emit.child.value] : entry.batch;
+  return async({ provenance: emit.provenance, child: val(fullBatch) });
+};
+
+const updateMemory = <A>(
+  emit: InstEmit<A>,
+  oldMemory: Record<symbol, ProvenanceState<A>>
+): Record<symbol, ProvenanceState<A>> => {
+  if (emit.type === "init") {
+    const totalNum = oldMemory[emit.provenance]?.totalNum ?? 0;
+    const newState: ProvenanceState<A> = {
+      awaitingValueCount: oldMemory[emit.provenance]?.awaitingValueCount ?? 0,
+      batch: oldMemory[emit.provenance]?.batch ?? [],
+      totalNum,
+    };
+    return {
+      ...oldMemory,
+      [emit.provenance]: newState,
+      ...mergeObjs(
+        emit.children.map((child) => {
+          if (child.type === "close") {
+            return oldMemory;
+          }
+          if (child.type === "value") {
+            return {};
+          }
+          return updateMemory(child, { ...oldMemory, [emit.provenance]: newState });
+        })
+      ),
+    };
+  }
+  const oldEntry = oldMemory[emit.provenance];
+  const awaitingValueCount = oldEntry ? oldEntry.awaitingValueCount - 1 : 0;
+  const newState: ProvenanceState<A> = {
+    awaitingValueCount,
+    batch: oldEntry?.batch ?? [],
+    totalNum: oldEntry?.totalNum ?? 1,
+  };
+  if (emit.child == null || emit.child.type === "close") {
+    return {
+      ...oldMemory,
+      [emit.provenance]: newState,
+    };
+  }
+  if (emit.child.type === "value") {
+    return {
+      ...oldMemory,
+      [emit.provenance]: newState,
+    };
+  }
+  return {
+    ...oldMemory,
+    [emit.provenance]: newState,
+    ...updateMemory(emit.child, { ...oldMemory, [emit.provenance]: newState }),
+  };
 };
 
 export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]> => {
-  const memory = new Map<symbol, ProvenanceState<A>>();
   return inst.pipe(
-    r.mergeMap((a) => {
-      switch (a.type) {
-        case "init-child":
-          const provenanceIC = getProvenance(a.init);
-
-          if (memory.has(provenanceIC)) {
-            updateMap(memory, provenanceIC, (state) => {
-              return {
-                ...state,
-                totalNum: state.totalNum + 1,
-                batch: [...state.batch, ...a.syncVals],
-              };
-            });
-          } else {
-            memory.set(provenanceIC, {
-              awaitingValueCount: 0,
-              batch: a.syncVals,
-              totalNum: 1,
-            });
-          }
-
-          if (canEmitBatch(memory, a) && a.syncVals.length > 0) {
-            const memoryEntry = memory.get(provenanceIC)!;
-            const emitBatch = memoryEntry.batch;
-            updateMap(memory, provenanceIC, (state) => ({ ...state, batch: [], awaitingValueCount: state.totalNum }));
-            return r.of({
-              type: "init-child",
-              parent: mapInit(a.parent, () => []),
-              init: mapInit(a.init, () => []),
-              syncVals: [emitBatch, a.syncVals],
-            } satisfies InstInitChild<A[]>);
-          }
-          return r.EMPTY;
-        case "init":
-          if (memory.has(a.provenance)) {
-            updateMap(memory, a.provenance, (state) => {
-              return {
-                ...state,
-                totalNum: state.totalNum + 1,
-              };
-            });
-            return r.EMPTY;
-          }
-          memory.set(a.provenance, {
-            awaitingValueCount: 0,
-            batch: [],
-            totalNum: 1,
-          });
-          return r.of(a);
-        case "value":
-          const provenanceV = getProvenance(a.init);
-          updateMap(memory, provenanceV!, (state) => {
-            return {
-              ...state,
-              awaitingValueCount: state.awaitingValueCount === 0 ? state.totalNum - 1 : state.awaitingValueCount - 1,
-              batch: [...state.batch, a.value],
-            };
-          });
-          if (canEmitBatch(memory, a)) {
-            const memoryEntry = memory.get(provenanceV)!;
-            const emitBatch = memoryEntry.batch;
-            updateMap(memory, provenanceV, (state) => ({ ...state, batch: [], awaitingValueCount: state.totalNum }));
-            return r.of({
-              type: "value",
-              init: mapInit(a.init, () => []),
-              value: emitBatch,
-            } satisfies InstValPlain<A[]>);
-          }
-          return r.EMPTY;
-        case "close":
-          let totalNumLeft = 0;
-          actOnInit(a.init, {
-            plain: (plainInit) => {
-              updateMap(memory, plainInit.provenance, (provState) => {
-                totalNumLeft = provState.totalNum - 1;
-                return {
-                  ...provState,
-                  totalNum: provState.totalNum - 1,
-                };
-              });
-            },
-          });
-          if (totalNumLeft === 0) {
-            return r.of(mapInit(a.init, () => []));
-          } else {
-            return r.EMPTY;
-          }
+    r.scan(
+      (
+        { memory },
+        currentEmit
+      ): {
+        emit: InstEmit<A[]> | null;
+        memory: Record<symbol, ProvenanceState<A>>;
+      } => {
+        console.log(currentEmit);
+        if (currentEmit.type === "init") {
+          return {
+            emit: currentEmit.children.length === 0 ? null : groupInitSiblings(currentEmit),
+            memory: updateMemory(currentEmit, memory),
+          };
+        }
+        return {
+          emit: batchAsync(currentEmit, memory),
+          memory: updateMemory(currentEmit, memory),
+        };
+      },
+      { emit: null, memory: {} } as {
+        emit: InstEmit<A[]> | null;
+        memory: Record<symbol, ProvenanceState<A>>;
       }
-    })
+    ),
+    r.mergeMap(({ emit }) => (emit == null ? r.EMPTY : r.of(emit)))
   );
 };
-
-/**
- * NOTES
- * - can we get rid of the "take" stuff in the emit types?
- *   - the "close" events should be enough, no?
- * - after an 'init-merge', there will always be a constant number of 'init-childs', equal to the number emitted by the topmost 'batchSync'
- *   - we should wait for these
- * - can we get rid of `numSyncChildren`?
- *   - a superset of the same information is in `syncParents`
- */

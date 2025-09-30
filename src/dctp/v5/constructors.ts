@@ -2,7 +2,7 @@ import * as r from "rxjs";
 import { v4 as uuid } from "uuid";
 import Observable = r.Observable;
 import Subject = r.Subject;
-import { Instantaneous, InstClose, InstEmit, InstInitPlain, InstValPlain } from "./types";
+import { async, close, init, Instantaneous, InstClose, InstEmit, val } from "./types";
 import { Observer, Subscription } from "rxjs";
 
 export const cold = <T>(
@@ -11,27 +11,9 @@ export const cold = <T>(
   return r.defer(() => {
     const provenance = uuid() as unknown as symbol;
     return r.concat(
-      r.of({
-        type: "init",
-        provenance,
-      } satisfies InstInitPlain),
-      new Observable(subscribe).pipe(
-        r.map(
-          (value) =>
-            ({
-              type: "value",
-              init: {
-                type: "init",
-                provenance,
-              } satisfies InstInitPlain,
-              value,
-            }) satisfies InstValPlain<T>
-        )
-      ),
-      r.of({
-        type: "close",
-        init: { type: "init", provenance } satisfies InstInitPlain,
-      } satisfies InstClose<T>)
+      r.of(init<T>({ provenance, children: [] })),
+      new Observable(subscribe).pipe(r.map((value) => async<T>({ provenance, child: val(value) }))),
+      r.of(async<T>({ provenance, child: close }))
     );
   });
 };
@@ -79,18 +61,9 @@ export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.Subs
 
     return r
       .concat(
-        r.of({
-          type: "init",
-          provenance: this._provenance,
-        } satisfies InstInitPlain),
+        r.of(init<T>({ provenance: this._provenance, children: [] })),
         this.internalSubject,
-        r.of({
-          type: "close",
-          init: {
-            type: "init",
-            provenance: this._provenance,
-          } satisfies InstInitPlain,
-        } satisfies InstClose<T>)
+        r.of(async<T>({ provenance: this._provenance, child: close }))
       )
       .subscribe({
         next: (value) => {
@@ -111,14 +84,7 @@ export class InstantSubject<T> extends Observable<InstEmit<T>> implements r.Subs
   }
 
   next(value: T) {
-    this.internalSubject.next({
-      type: "value",
-      init: {
-        type: "init",
-        provenance: this._provenance,
-      } satisfies InstInitPlain,
-      value,
-    } satisfies InstValPlain<T>);
+    this.internalSubject.next(async({ provenance: this._provenance, child: val(value) }));
   }
 
   error(err: any) {

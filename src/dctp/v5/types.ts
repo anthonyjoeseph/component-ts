@@ -1,108 +1,88 @@
 import * as r from "rxjs";
 import Observable = r.Observable;
-import zip from "lodash/zip";
 
-export type InstInitPlain = {
+export type InstInit<A> = {
   type: "init";
   provenance: symbol;
-  take?: number;
+  children: (InstEmit<A> | InstVal<A> | InstClose)[];
 };
-
-export type InstInitChild<A> = {
-  type: "init-child";
-  parent: {
-    isSync: boolean;
-    init: InstInit<A>;
-  };
-  init: InstInit<A>;
-  syncVals: A[];
+export type InstAsync<A> = {
+  type: "async";
+  provenance: symbol;
+  child: InstEmit<A> | InstVal<A> | InstClose | null;
 };
-
-export type InstValPlain<A> = {
+export type InstVal<A> = {
   type: "value";
   value: A;
-  init: InstInit<A>;
 };
-
-export type InstValMerge<A> = {
-  type: "value-merge";
-  values: InstVal<A>[];
-};
-
-export type InstClose<A> = {
+export type InstClose = {
   type: "close";
-  init: InstInit<A>;
 };
 
-export type InstInit<A> = InstInitPlain | InstInitChild<A>;
-
-export type InstVal<A> = InstValPlain<A> | InstInitChild<A> | InstValMerge<A>;
-
-export type InstEmit<A> = InstInit<A> | InstVal<A> | InstClose<A>;
-
+export type InstEmit<A> = InstInit<A> | InstAsync<A>;
 export type Instantaneous<A> = Observable<InstEmit<A>>;
 
+export const init = <A>(input: {
+  provenance: symbol;
+  children: (InstEmit<A> | InstVal<A> | InstClose)[];
+}): InstInit<A> => ({
+  type: "init",
+  ...input,
+});
+export const async = <A>(input: {
+  provenance: symbol;
+  child: InstInit<A> | InstAsync<A> | InstVal<A> | InstClose | null;
+}): InstAsync<A> => ({
+  type: "async",
+  ...input,
+});
+export const val = <A>(value: A): InstVal<A> => ({ type: "value", value });
+export const close: InstClose = { type: "close" };
+
 export const isInit = <A>(a: InstEmit<A>): a is InstInit<A> => {
-  return a.type === "init" || a.type === "init-child";
+  return a.type === "init";
 };
 
-export const isVal = <A>(a: InstEmit<A>): a is InstVal<A> => {
-  return a.type === "value" || a.type === "init-child";
+export const isAsync = <A>(a: InstEmit<A>): a is InstAsync<A> => {
+  return a.type === "async";
 };
 
-// TODO: remove mutual recursion, make this stack-safe somehow
-// see: actOnInit in batch-simultaneous.ts
-export const mapInit = <A, B>(a: InstInit<A>, fn: (i: A[]) => B[]): InstInit<B> => {
+export const map = <A, B>(
+  a: InstInit<A> | InstAsync<A> | InstVal<A> | InstClose,
+  fn: (a: A) => B
+): InstInit<B> | InstAsync<B> | InstVal<B> | InstClose => {
   switch (a.type) {
     case "init":
-      return a;
-    case "init-child":
       return {
-        type: "init-child",
-        parent: {
-          isSync: a.parent.isSync,
-          init: mapInit(a.parent.init, fn),
-        },
-        init: mapInit(a.init, fn),
-        syncVals: fn(a.syncVals),
-      };
-  }
-};
-
-// TODO: remove mutual recursion, make this stack-safe somehow
-export const mapVal = <A, B>(a: InstVal<A>, fn: (i: A) => B): InstVal<B> => {
-  switch (a.type) {
+        type: "init",
+        provenance: a.provenance,
+        children: a.children.map((child) => map(child, fn) as InstClose | InstEmit<B>),
+      } satisfies InstInit<B>;
+    case "async":
+      return {
+        type: "async",
+        provenance: a.provenance,
+        child: a == null ? null : map(a, fn),
+      } satisfies InstAsync<B>;
     case "value":
       return {
         type: "value",
-        init: mapInit(a.init, (as) => as.map(fn)),
         value: fn(a.value),
-      };
-    case "init-child":
-      return {
-        type: "init-child",
-        init: mapInit(a.init, (as) => as.map(fn)),
-        parent: {
-          isSync: a.parent.isSync,
-          init: mapInit(a.parent.init, (as) => as.map(fn)),
-        },
-        syncVals: a.syncVals.map(fn),
-      } satisfies InstInitChild<B>;
-    case "value-merge":
-      return {
-        type: "value-merge",
-        values: a.values.map((val) => mapVal(val, fn)),
-      } satisfies InstValMerge<B>;
+      } satisfies InstVal<B>;
+    case "close":
+      return a;
   }
 };
 
-export const initEq = <A>(a: InstInit<A>, b: InstInit<A>): boolean => {
-  switch (a.type) {
-    case "init":
-      if (b.type !== "init") return false;
-      return a.provenance === b.provenance;
-    case "init-child":
-      if (b.type !== "init-child") return false;
-      return initEq(a.init, b.init) && initEq(a.parent.init, b.parent.init);
+export const values = <A>(emit: InstEmit<A>): A[] => {
+  if (emit.type === "init") {
+    return emit.children.flatMap((child) => (child.type === "value" ? [child.value] : []));
   }
+  return emit.child == null
+    ? []
+    : emit.child.type === "value"
+      ? [emit.child.value]
+      : emit.child.type === "close"
+        ? []
+        : values(emit.child);
 };

@@ -3,46 +3,32 @@ import { v4 as uuid } from "uuid";
 import Observable = r.Observable;
 import Subject = r.Subject;
 import {
+  async,
+  close,
+  init,
   Instantaneous,
+  InstAsync,
   InstClose,
   InstEmit,
   InstInit,
-  InstInitChild,
-  InstInitPlain,
-  InstValPlain,
+  InstVal,
   isInit,
-  isVal,
-  mapInit,
-  mapVal,
+  map as mapPrimitive,
+  val,
+  values,
 } from "./types";
 
 export const EMPTY = r.defer(() => of());
 
 export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> => {
   const provenance = uuid() as unknown as symbol;
+
   return r.of(
-    {
-      type: "init",
+    init<As[number]>({
       provenance,
-    } satisfies InstInitPlain,
-    ...a.map(
-      (value) =>
-        ({
-          type: "value",
-          init: {
-            type: "init",
-            provenance,
-          } satisfies InstInitPlain,
-          value,
-        }) satisfies InstValPlain<As[number]>
-    ),
-    {
-      type: "close",
-      init: {
-        type: "init",
-        provenance,
-      } satisfies InstInitPlain,
-    } satisfies InstClose<As[number]>
+      children: a.map(val),
+    }),
+    async({ provenance, child: close })
   );
 };
 
@@ -92,15 +78,7 @@ export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {
 export const map =
   <A, B>(fn: (a: A) => B) =>
   (inst: Instantaneous<A>): Instantaneous<B> => {
-    return inst.pipe(
-      r.map((a) =>
-        isVal(a)
-          ? mapVal(a, fn)
-          : isInit(a)
-            ? a
-            : ({ type: "close", init: mapInit(a.init, (as) => as.map(fn)) } satisfies InstClose<B>)
-      )
-    );
+    return inst.pipe(r.map((a) => mapPrimitive(a, fn) as InstEmit<B>));
   };
 
 export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) => Instantaneous<A>) => {
@@ -115,34 +93,26 @@ export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) =>
 export const take =
   (takeNum: number) =>
   <A>(inst: Instantaneous<A>): Instantaneous<A> => {
-    let init: InstInit<A> | undefined;
+    let provenance: symbol;
+    let numSyncEmissions: number;
     return r.concat(
       inst.pipe(
-        r.map((a) => {
+        r.tap((a) => {
           if (isInit(a)) {
-            init = a;
-            const addTake = (init: InstInit<A>): InstInit<A> => {
-              switch (init.type) {
-                case "init":
-                  return { ...init, take: init.take === undefined ? takeNum : Math.min(init.take, takeNum) };
-                case "init-child":
-                  return {
-                    ...init,
-                    init: addTake(init.init),
-                  } satisfies InstInitChild<A>;
-              }
-            };
-            return addTake(a);
+            provenance = a.provenance;
+            numSyncEmissions = a.children.filter((c) => c.type === "value").length;
           }
-          return a;
         }),
-        r.take(takeNum)
+        r.take(takeNum + 1 - numSyncEmissions!) // add one for the 'init' emission
       ),
-      r.of({ type: "close", init: init as InstInit<A> } satisfies InstClose<A>)
+      r.of({
+        type: "async",
+        provenance: provenance!,
+        child: { type: "close" } satisfies InstClose,
+      } satisfies InstAsync<A>)
     );
   };
 
 export const fromInstantaneous: <A>(obs: Instantaneous<A>) => r.Observable<A> = r.pipe(
-  r.filter((emit) => emit.type === "value" || emit.type === "init-child"),
-  r.mergeMap((emit) => (emit.type === "value" ? r.of(emit.value) : r.of(...emit.syncVals)))
+  r.mergeMap((emit) => r.of(...values(emit)))
 );

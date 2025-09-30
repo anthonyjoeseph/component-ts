@@ -5,7 +5,7 @@ import { mergeAll } from "./v5/joins";
 import { merge, switchMap } from "./v5/util";
 import * as r from "rxjs";
 
-/* const a = cold<number>((subscriber) => {
+const a = cold<number>((subscriber) => {
   let count = 0;
   const intervalId = setInterval(() => {
     if (count > 2) {
@@ -14,9 +14,7 @@ import * as r from "rxjs";
     }
     subscriber.next(count++);
   }, 1000);
-}).pipe(share); */
-
-const a = new InstantSubject<number>();
+}).pipe(share);
 
 const merged = of(a, a.pipe(map((n) => n * 2))).pipe(mergeAll(), batchSimultaneous, fromInstantaneous);
 
@@ -25,9 +23,4 @@ const switched = merge(a, a.pipe(switchMap((e) => (e === 0 ? EMPTY : of(e))))).p
   fromInstantaneous
 );
 
-a.subscribe(console.log);
-
-a.next(0);
-a.next(1);
-a.next(2);
-a.complete();
+merged.subscribe();
