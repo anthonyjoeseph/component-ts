@@ -1,21 +1,5 @@
 import * as r from "rxjs";
-import Observable = r.Observable;
-import {
-  Instantaneous,
-  InstClose,
-  InstEmit,
-  InstInit,
-  InstAsync,
-  InstVal,
-  async,
-  isAsync,
-  close,
-  init,
-  isInit,
-  map as mapPrimitive,
-  val,
-  values,
-} from "./types";
+import { Instantaneous, InstEmit, InstAsync, async, init, map as mapPrimitive, val } from "./types";
 
 type ProvenanceState<A> = {
   awaitingValueCount: number;
