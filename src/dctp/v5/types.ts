@@ -10,7 +10,10 @@ export type InstInitPlain = {
 
 export type InstInitChild<A> = {
   type: "init-child";
-  parent: InstInit<A>;
+  parent: {
+    isSync: boolean;
+    init: InstInit<A>;
+  };
   init: InstInit<A>;
   syncVals: A[];
 };
@@ -21,6 +24,11 @@ export type InstValPlain<A> = {
   init: InstInit<A>;
 };
 
+export type InstValMerge<A> = {
+  type: "value-merge";
+  values: InstVal<A>[];
+};
+
 export type InstClose<A> = {
   type: "close";
   init: InstInit<A>;
@@ -28,7 +36,7 @@ export type InstClose<A> = {
 
 export type InstInit<A> = InstInitPlain | InstInitChild<A>;
 
-export type InstVal<A> = InstValPlain<A> | InstInitChild<A>;
+export type InstVal<A> = InstValPlain<A> | InstInitChild<A> | InstValMerge<A>;
 
 export type InstEmit<A> = InstInit<A> | InstVal<A> | InstClose<A>;
 
@@ -51,7 +59,10 @@ export const mapInit = <A, B>(a: InstInit<A>, fn: (i: A[]) => B[]): InstInit<B> 
     case "init-child":
       return {
         type: "init-child",
-        parent: mapInit(a.parent, fn),
+        parent: {
+          isSync: a.parent.isSync,
+          init: mapInit(a.parent.init, fn),
+        },
         init: mapInit(a.init, fn),
         syncVals: fn(a.syncVals),
       };
@@ -71,9 +82,17 @@ export const mapVal = <A, B>(a: InstVal<A>, fn: (i: A) => B): InstVal<B> => {
       return {
         type: "init-child",
         init: mapInit(a.init, (as) => as.map(fn)),
-        parent: mapInit(a.parent, (as) => as.map(fn)),
+        parent: {
+          isSync: a.parent.isSync,
+          init: mapInit(a.parent.init, (as) => as.map(fn)),
+        },
         syncVals: a.syncVals.map(fn),
       } satisfies InstInitChild<B>;
+    case "value-merge":
+      return {
+        type: "value-merge",
+        values: a.values.map((val) => mapVal(val, fn)),
+      } satisfies InstValMerge<B>;
   }
 };
 
@@ -84,6 +103,6 @@ export const initEq = <A>(a: InstInit<A>, b: InstInit<A>): boolean => {
       return a.provenance === b.provenance;
     case "init-child":
       if (b.type !== "init-child") return false;
-      return initEq(a.init, b.init) && initEq(a.parent, b.parent);
+      return initEq(a.init, b.init) && initEq(a.parent.init, b.parent.init);
   }
 };

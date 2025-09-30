@@ -6,16 +6,80 @@ import {
   InstEmit,
   InstInit,
   InstInitChild,
-  InstVal,
   InstValPlain,
   isInit,
   isVal,
   mapInit,
-  mapVal,
+  InstValMerge,
+  InstVal,
 } from "./types";
 import { Async, batchSync, Sync } from "../batch-sync";
-import range from "lodash/range";
 import { EMPTY, share } from "./basic-primitives";
+
+const flattenValMerge = <A>(emit: InstValMerge<A>): (InstInitChild<A> | InstValPlain<A>)[] => {
+  return emit.values.flatMap((emit): (InstInitChild<A> | InstValPlain<A>)[] =>
+    emit.type === "value-merge" ? flattenValMerge(emit) : [emit]
+  );
+};
+
+const wrapWithParent = <A>(
+  emitVal: InstEmit<A>,
+  parentInit: InstInit<A>,
+  isSync: boolean
+): (InstInitChild<A> | InstValPlain<A> | InstClose<A>)[] => {
+  const emissions = emitVal.type === "value-merge" ? flattenValMerge(emitVal) : [emitVal];
+  return emissions.map((plainEmit) => {
+    switch (plainEmit.type) {
+      case "init":
+        return {
+          type: "init-child",
+          init: plainEmit,
+          parent: {
+            isSync,
+            init: parentInit,
+          },
+          syncVals: [],
+        } satisfies InstInitChild<A>;
+      case "init-child":
+        return {
+          type: "init-child",
+          init: plainEmit,
+          parent: {
+            isSync,
+            init: parentInit,
+          },
+          syncVals: [],
+        } satisfies InstInitChild<A>;
+      case "value":
+        return {
+          type: "value",
+          init: {
+            type: "init-child",
+            init: plainEmit.init,
+            parent: {
+              isSync,
+              init: parentInit,
+            },
+            syncVals: [],
+          } satisfies InstInitChild<A>,
+          value: plainEmit.value,
+        } satisfies InstValPlain<A>;
+      case "close":
+        return {
+          type: "close",
+          init: {
+            type: "init-child",
+            init: plainEmit.init,
+            parent: {
+              isSync,
+              init: parentInit,
+            },
+            syncVals: [],
+          } satisfies InstInitChild<A>,
+        } satisfies InstClose<A>;
+    }
+  });
+};
 
 const wrapChildEmit = <A>(
   childEmitGroup: Sync<InstEmit<A>> | Async<InstEmit<A>>,
@@ -24,13 +88,17 @@ const wrapChildEmit = <A>(
   if (childEmitGroup.type === "sync") {
     const allInits = childEmitGroup.value.filter(isInit);
 
+    const flattened = childEmitGroup.value.flatMap((emit): (InstClose<A> | InstInitChild<A> | InstValPlain<A>)[] =>
+      emit.type === "value-merge" ? flattenValMerge(emit) : emit.type === "init" ? [] : [emit]
+    );
+
     const groupedWithVals = allInits.map((init) => {
-      const fromStream = childEmitGroup.value.filter(
-        (a): a is InstVal<A> | InstClose<A> => (isVal(a) || a.type === "close") && initEq(init, a.init)
+      const fromStream = flattened.filter((a): a is InstInitChild<A> | InstValPlain<A> | InstClose<A> =>
+        initEq(init, a.init)
       );
       return {
         init,
-        vals: fromStream.filter(isVal),
+        vals: fromStream.filter((a) => isVal(a)),
         close: fromStream.find((a): a is InstClose<A> => a.type === "close"),
       };
     });
@@ -39,7 +107,10 @@ const wrapChildEmit = <A>(
       return [
         {
           type: "init-child",
-          parent: parentInit,
+          parent: {
+            isSync: true,
+            init: parentInit,
+          },
           init: init,
           syncVals: vals.flatMap((v) => (v.type === "init-child" ? v.syncVals : [v.value])),
         } satisfies InstInitChild<A>,
@@ -52,35 +123,47 @@ const wrapChildEmit = <A>(
       return [
         {
           type: "init-child",
-          parent: parentInit as InstInit<A>,
+          parent: {
+            isSync: true,
+            init: parentInit as InstInit<A>,
+          },
           init: childEmit,
           syncVals: [],
         } satisfies InstInitChild<A>,
       ];
     }
     if (isVal(childEmit)) {
-      if (childEmit.type === "init-child") {
+      const plainVals = childEmit.type === "value-merge" ? flattenValMerge(childEmit) : [childEmit];
+      return plainVals.flatMap((plainVal): (InstInitChild<A> | InstValPlain<A>)[] => {
+        if (plainVal.type === "init-child") {
+          return [
+            {
+              type: "init-child",
+              parent: {
+                isSync: true,
+                init: parentInit as InstInit<A>,
+              },
+              init: plainVal,
+              syncVals: [],
+            } satisfies InstInitChild<A>,
+          ];
+        }
         return [
           {
-            type: "init-child",
-            parent: parentInit as InstInit<A>,
-            init: childEmit,
-            syncVals: [],
-          } satisfies InstInitChild<A>,
+            type: "value",
+            init: {
+              type: "init-child",
+              parent: {
+                isSync: true,
+                init: parentInit as InstInit<A>,
+              },
+              init: plainVal.init,
+              syncVals: [],
+            } satisfies InstInitChild<A>,
+            value: plainVal.value,
+          } satisfies InstValPlain<A>,
         ];
-      }
-      return [
-        {
-          type: "value",
-          init: {
-            type: "init-child",
-            parent: parentInit as InstInit<A>,
-            init: childEmit.init,
-            syncVals: [],
-          } satisfies InstInitChild<A>,
-          value: childEmit.value,
-        } satisfies InstValPlain<A>,
-      ];
+      });
     }
     return [childEmit];
   }
@@ -137,86 +220,28 @@ export const mergeAll =
                 ...initChilds.flatMap((initChild) => {
                   return initChild.syncVals.map((val) => {
                     return val.pipe(
-                      r.map((emit): InstEmit<A> => {
-                        if (emit.type === "init") {
-                          return {
-                            type: "init-child",
-                            parent: mapInit(initChild, () => []),
-                            init: emit,
-                            syncVals: [],
-                          } satisfies InstInitChild<A>;
-                        } else if (emit.type === "init-child") {
-                          return {
-                            type: "init-child",
-                            parent: mapInit(initChild, () => []),
-                            init: emit,
-                            syncVals: emit.syncVals,
-                          } satisfies InstInitChild<A>;
-                        } else if (emit.type === "value") {
-                          return {
-                            type: "value",
-                            init: {
-                              type: "init-child",
-                              parent: mapInit(initChild, () => []),
-                              init: emit.init,
-                              syncVals: [],
-                            } satisfies InstInitChild<A>,
-                            value: emit.value,
-                          } satisfies InstValPlain<A>;
-                        } else {
-                          return {
-                            type: "close",
-                            init: {
-                              type: "init-child",
-                              parent: mapInit(initChild, () => []),
-                              init: emit.init,
-                              syncVals: [],
-                            } satisfies InstInitChild<A>,
-                          } satisfies InstClose<A>;
-                        }
+                      r.mergeMap((emit) => {
+                        return r.of(
+                          ...wrapWithParent(
+                            emit,
+                            mapInit(initChild, () => []),
+                            true
+                          )
+                        );
                       })
                     );
                   });
                 }),
                 ...values.map((val) => {
                   return val.value.pipe(
-                    r.map((emit): InstEmit<A> => {
-                      if (emit.type === "init") {
-                        return {
-                          type: "init-child",
-                          parent: mapInit(val.init, () => []),
-                          init: emit,
-                          syncVals: [],
-                        } satisfies InstInitChild<A>;
-                      } else if (emit.type === "init-child") {
-                        return {
-                          type: "init-child",
-                          parent: mapInit(val.init, () => []),
-                          init: emit,
-                          syncVals: emit.syncVals,
-                        } satisfies InstInitChild<A>;
-                      } else if (emit.type === "value") {
-                        return {
-                          type: "value",
-                          init: {
-                            type: "init-child",
-                            parent: mapInit(val.init, () => []),
-                            init: emit.init,
-                            syncVals: [],
-                          } satisfies InstInitChild<A>,
-                          value: emit.value,
-                        } satisfies InstValPlain<A>;
-                      } else {
-                        return {
-                          type: "close",
-                          init: {
-                            type: "init-child",
-                            parent: mapInit(val.init, () => []),
-                            init: emit.init,
-                            syncVals: [],
-                          } satisfies InstInitChild<A>,
-                        } satisfies InstClose<A>;
-                      }
+                    r.mergeMap((emit) => {
+                      return r.of(
+                        ...wrapWithParent(
+                          emit,
+                          mapInit(val.init, () => []),
+                          true
+                        )
+                      );
                     })
                   );
                 })

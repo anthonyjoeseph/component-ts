@@ -20,71 +20,72 @@ export const EMPTY = r.defer(() => of());
 
 export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> => {
   const provenance = uuid() as unknown as symbol;
-  return r
-    .of(
-      {
+  return r.of(
+    {
+      type: "init",
+      provenance,
+    } satisfies InstInitPlain,
+    ...a.map(
+      (value) =>
+        ({
+          type: "value",
+          init: {
+            type: "init",
+            provenance,
+          } satisfies InstInitPlain,
+          value,
+        }) satisfies InstValPlain<As[number]>
+    ),
+    {
+      type: "close",
+      init: {
         type: "init",
         provenance,
       } satisfies InstInitPlain,
-      ...a.map(
-        (value) =>
-          ({
-            type: "value",
-            init: {
-              type: "init",
-              provenance,
-            } satisfies InstInitPlain,
-            value,
-          }) satisfies InstValPlain<As[number]>
-      ),
-      {
-        type: "close",
-        init: {
-          type: "init",
-          provenance,
-        } satisfies InstInitPlain,
-      } satisfies InstClose<As[number]>
-    )
-    .pipe(
-      r.tap((val) => {
-        console.log(val);
-      })
-    );
+    } satisfies InstClose<As[number]>
+  );
 };
 
 export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {
-  if ("nextInternal" in inst) {
+  if ("internalSubject" in inst) {
     return inst;
   }
   const subj = new Subject<InstEmit<A>>();
   let isSubscribed = false;
   let init: InstInit<A> | undefined;
+  let subscription: r.Subscription;
   return r.defer(() => {
-    let subscription: r.Subscription;
-    if (!isSubscribed) {
-      subscription = inst.subscribe({
-        next: (emit) => {
-          if (!init) {
-            init = emit as InstInit<A>;
-          }
-          subj.next(emit);
-        },
-        error: (err) => {
-          subj.error(err);
-        },
-        complete: () => {
-          subj.complete();
-        },
-      });
-      isSubscribed = true;
-    }
     if (init !== undefined) {
       return subj.pipe(
         r.startWith(init),
-        r.finalize(() => subscription.unsubscribe())
+        r.finalize(() => {
+          subscription?.unsubscribe();
+        })
       );
     }
-    return subj.pipe(r.finalize(() => subscription.unsubscribe()));
+    return r.merge(
+      subj,
+      r.defer(() => {
+        if (!isSubscribed) {
+          subscription = inst.subscribe({
+            next: (emit) => {
+              if (!init) {
+                init = emit as InstInit<A>;
+              }
+              subj.next(emit);
+            },
+            error: (err) => {
+              subj.error(err);
+            },
+            complete: () => {
+              subj.complete();
+            },
+          });
+          isSubscribed = true;
+        }
+        return r.EMPTY;
+      })
+    );
   });
 };
 
