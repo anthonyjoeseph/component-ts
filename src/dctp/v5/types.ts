@@ -62,7 +62,7 @@ export const map = <A, B>(
       return {
         type: "async",
         provenance: a.provenance,
-        child: a == null ? null : map(a, fn),
+        child: a.child == null ? null : map(a.child, fn),
       } satisfies InstAsync<B>;
     case "value":
       return {

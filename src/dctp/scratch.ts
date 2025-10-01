@@ -16,11 +16,18 @@ const a = cold<number>((subscriber) => {
   }, 1000);
 }).pipe(share);
 
-const merged = of(a, a.pipe(map((n) => n * 2))).pipe(mergeAll(), batchSimultaneous, fromInstantaneous);
+const merged = of(a, a.pipe(map((n) => n * 2))).pipe(
+  mergeAll(),
+  batchSimultaneous,
+  fromInstantaneous,
+  r.tap((vals) => {
+    console.log(vals);
+  })
+);
 
-const switched = merge(a, a.pipe(switchMap((e) => (e === 0 ? EMPTY : of(e))))).pipe(
+/* const switched = merge(a, a.pipe(switchMap((e) => (e === 0 ? EMPTY : of(e))))).pipe(
   batchSimultaneous,
   fromInstantaneous
-);
+); */
 
 merged.subscribe();

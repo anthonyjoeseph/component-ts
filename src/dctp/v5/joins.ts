@@ -63,7 +63,7 @@ const flipInside = <A>(emit: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
   return r.merge(
     ...emit.children.map((child): r.Observable<InstEmit<A>> => {
       if (child.type === "close") {
-        return r.of(async<A>({ provenance: emit.provenance, child }));
+        return r.of(init<A>({ provenance: emit.provenance, children: [child] }));
       }
       if (child.type === "value") {
         return child.value.pipe(
@@ -113,7 +113,16 @@ export const mergeAll =
             if (batched.type === "async") {
               return batched.value;
             }
-            return init({ provenance: uuid() as unknown as symbol, children: batched.value });
+            const groupedInits = Map.groupBy(batched.value, (e) => e.provenance);
+            const inits = groupedInits.entries().map(([provenance, emits]) =>
+              init({
+                provenance,
+                children: emits.flatMap((emit) =>
+                  emit.type === "init" ? emit.children : emit.child == null ? [] : [emit.child]
+                ),
+              })
+            );
+            return init({ provenance: uuid() as unknown as symbol, children: [...inits, close] });
           })
         );
       }),

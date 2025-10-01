@@ -26,9 +26,8 @@ export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> =>
   return r.of(
     init<As[number]>({
       provenance,
-      children: a.map(val),
-    }),
-    async({ provenance, child: close })
+      children: [...a.map(val), close],
+    })
   );
 };
 
@@ -114,5 +113,8 @@ export const take =
   };
 
 export const fromInstantaneous: <A>(obs: Instantaneous<A>) => r.Observable<A> = r.pipe(
-  r.mergeMap((emit) => r.of(...values(emit)))
+  r.mergeMap((emit) => {
+    const allVals = values(emit);
+    return r.of(...allVals);
+  })
 );
