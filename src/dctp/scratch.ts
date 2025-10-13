@@ -1,9 +1,9 @@
-import { cold, InstantSubject } from "./v5/constructors";
-import { fromInstantaneous, map, of, EMPTY, share } from "./v5/basic-primitives";
+import { cold } from "./v5/constructors";
+import { EMPTY, fromInstantaneous, map, of, share } from "./v5/basic-primitives";
 import { batchSimultaneous } from "./v5/batch-simultaneous";
 import { mergeAll } from "./v5/joins";
-import { merge, switchMap } from "./v5/util";
 import * as r from "rxjs";
+import { merge, switchMap } from "./v5/util";
 
 const a = cold<number>((subscriber) => {
   let count = 0;
@@ -25,9 +25,9 @@ const merged = of(a, a.pipe(map((n) => n * 2))).pipe(
   })
 );
 
-/* const switched = merge(a, a.pipe(switchMap((e) => (e === 0 ? EMPTY : of(e))))).pipe(
+const switched = merge(a, a.pipe(switchMap((e) => (e === 0 ? EMPTY : of(e))))).pipe(
   batchSimultaneous,
   fromInstantaneous
-); */
+);
 
 merged.subscribe();

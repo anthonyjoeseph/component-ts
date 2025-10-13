@@ -178,3 +178,10 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
  *   - can safely ignore
  *   - example - the 'of' in 'of(a, a).pipe(mergeAll())'
  */
+
+/**
+ * TODO:
+ *
+ * - init value doesn't interact with memory
+ *   - should show up with merge(a.switchmap(of), a)
+ */
