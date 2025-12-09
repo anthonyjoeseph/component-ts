@@ -1,5 +1,16 @@
 import * as r from "rxjs";
-import { Instantaneous, InstClose, InstEmit, InstInit, init, async, val, close, InstVal, InstAsync } from "./types";
+import {
+  Instantaneous,
+  InstClose,
+  InstEmit,
+  InstInit,
+  init,
+  async,
+  val,
+  close,
+  InstVal,
+  InstAsync,
+} from "./types";
 import { batchSync } from "../batch-sync";
 import { v4 as uuid } from "uuid";
 
@@ -16,11 +27,13 @@ const flipInside = <A>(emit: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
             return async({ provenance: emit.provenance, child: batch.value });
           }
           return init({ provenance: emit.provenance, children: batch.value });
-        })
+        }),
       );
     }
     if (emit.child.type === "async") {
-      return flipInside(emit.child).pipe(r.map((child) => async({ provenance: emit.provenance, child })));
+      return flipInside(emit.child).pipe(
+        r.map((child) => async({ provenance: emit.provenance, child })),
+      );
     }
 
     return r
@@ -34,10 +47,16 @@ const flipInside = <A>(emit: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
               batchSync(),
               r.map((batch) => {
                 if (batch.type === "async") {
-                  return async({ provenance: emit.provenance, child: batch.value });
+                  return async({
+                    provenance: emit.provenance,
+                    child: batch.value,
+                  });
                 }
-                return init({ provenance: emit.provenance, children: batch.value });
-              })
+                return init({
+                  provenance: emit.provenance,
+                  children: batch.value,
+                });
+              }),
             );
           }
           return flipInside(child).pipe(
@@ -46,9 +65,9 @@ const flipInside = <A>(emit: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
                 return init({ provenance: emit.provenance, children: [child] });
               }
               return async({ provenance: emit.provenance, child });
-            })
+            }),
           );
-        })
+        }),
       )
       .pipe(
         r.map((child) => {
@@ -56,14 +75,16 @@ const flipInside = <A>(emit: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
             return init({ provenance: emit.provenance, children: [child] });
           }
           return async({ provenance: emit.provenance, child });
-        })
+        }),
       );
   }
 
   return r.merge(
     ...emit.children.map((child): r.Observable<InstEmit<A>> => {
       if (child.type === "close") {
-        return r.of(init<A>({ provenance: emit.provenance, children: [child] }));
+        return r.of(
+          init<A>({ provenance: emit.provenance, children: [child] }),
+        );
       }
       if (child.type === "value") {
         return child.value.pipe(
@@ -73,7 +94,7 @@ const flipInside = <A>(emit: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
               return async({ provenance: emit.provenance, child: batch.value });
             }
             return init({ provenance: emit.provenance, children: batch.value });
-          })
+          }),
         );
       }
       return flipInside(child).pipe(
@@ -88,13 +109,15 @@ const flipInside = <A>(emit: InstEmit<Instantaneous<A>>): Instantaneous<A> => {
             return init({ provenance: emit.provenance, children: [child] });
           }
           return async({ provenance: emit.provenance, child });
-        })
+        }),
       );
-    })
+    }),
   );
 };
 
-export const switchAll = <A>(insts: Instantaneous<Instantaneous<A>>): Instantaneous<A> => {
+export const switchAll = <A>(
+  insts: Instantaneous<Instantaneous<A>>,
+): Instantaneous<A> => {
   return insts.pipe(r.map(flipInside), r.switchAll());
 };
 
@@ -113,20 +136,30 @@ export const mergeAll =
             if (batched.type === "async") {
               return batched.value;
             }
-            const groupedInits = Map.groupBy(batched.value, (e) => e.provenance);
+            const groupedInits = Map.groupBy(
+              batched.value,
+              (e) => e.provenance,
+            );
             const inits = groupedInits.entries().map(([provenance, emits]) =>
               init({
                 provenance,
                 children: emits.flatMap((emit) =>
-                  emit.type === "init" ? emit.children : emit.child == null ? [] : [emit.child]
+                  emit.type === "init"
+                    ? emit.children
+                    : emit.child == null
+                      ? []
+                      : [emit.child],
                 ),
-              })
+              }),
             );
-            return init({ provenance: uuid() as unknown as symbol, children: [...inits, close] });
-          })
+            return init({
+              provenance: uuid() as unknown as symbol,
+              children: [...inits, close],
+            });
+          }),
         );
       }),
-      r.mergeAll(concurrency)
+      r.mergeAll(concurrency),
     );
   };
 

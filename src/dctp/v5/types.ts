@@ -49,14 +49,16 @@ export const isAsync = <A>(a: InstEmit<A>): a is InstAsync<A> => {
 
 export const map = <A, B>(
   a: InstInit<A> | InstAsync<A> | InstVal<A> | InstClose,
-  fn: (a: A) => B
+  fn: (a: A) => B,
 ): InstInit<B> | InstAsync<B> | InstVal<B> | InstClose => {
   switch (a.type) {
     case "init":
       return {
         type: "init",
         provenance: a.provenance,
-        children: a.children.map((child) => map(child, fn) as InstClose | InstEmit<B>),
+        children: a.children.map(
+          (child) => map(child, fn) as InstClose | InstEmit<B>,
+        ),
       } satisfies InstInit<B>;
     case "async":
       return {
@@ -76,7 +78,9 @@ export const map = <A, B>(
 
 export const values = <A>(emit: InstEmit<A>): A[] => {
   if (emit.type === "init") {
-    return emit.children.flatMap((child) => (child.type === "value" ? [child.value] : []));
+    return emit.children.flatMap((child) =>
+      child.type === "value" ? [child.value] : [],
+    );
   }
   return emit.child == null
     ? []

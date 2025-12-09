@@ -17,7 +17,10 @@ type ProvenanceState<A> = {
   batch: A[];
 };
 
-const deleteKey = <K extends string | number | symbol, A>(record: Record<K, A>, key: K): Record<K, A> => {
+const deleteKey = <K extends string | number | symbol, A>(
+  record: Record<K, A>,
+  key: K,
+): Record<K, A> => {
   const { [key]: _, ...rest } = record;
   return rest as Record<K, A>;
 };
@@ -33,13 +36,18 @@ const updateMemory = <A>(
     awaitingValueCount?: "--";
     totalNum?: "++" | "--";
     batchAppend?: A;
-  }
+  },
 ): Record<symbol, ProvenanceState<A>> => {
   const state = memory[provenance];
   const currentCount = state?.awaitingValueCount;
   const currentTotal = state?.totalNum ?? 0;
   const currentBatch = state?.batch ?? [];
-  const newTotal = totalNum === "++" ? currentTotal + 1 : totalNum === "--" ? currentTotal - 1 : currentTotal;
+  const newTotal =
+    totalNum === "++"
+      ? currentTotal + 1
+      : totalNum === "--"
+        ? currentTotal - 1
+        : currentTotal;
   if (newTotal === 0) {
     return deleteKey(memory, provenance);
   }
@@ -66,8 +74,13 @@ const updateMemory = <A>(
   };
 };
 
-const groupInitSiblings = <A>(emit: InstInit<A>, memory: Record<symbol, ProvenanceState<A>>): InstEmit<A[]> | null => {
-  const allVals = emit.children.filter((child) => child.type === "value").map((v) => v.value);
+const groupInitSiblings = <A>(
+  emit: InstInit<A>,
+  memory: Record<symbol, ProvenanceState<A>>,
+): InstEmit<A[]> | null => {
+  const allVals = emit.children
+    .filter((child) => child.type === "value")
+    .map((v) => v.value);
   const consolidatedVal = allVals.length > 0 ? [val(allVals)] : [];
   const otherChildren = emit.children
     .filter((child) => child.type !== "value")
@@ -82,7 +95,10 @@ const groupInitSiblings = <A>(emit: InstInit<A>, memory: Record<symbol, Provenan
   });
 };
 
-const batchAsync = <A>(emit: InstAsync<A>, memory: Record<symbol, ProvenanceState<A>>): InstEmit<A[]> | null => {
+const batchAsync = <A>(
+  emit: InstAsync<A>,
+  memory: Record<symbol, ProvenanceState<A>>,
+): InstEmit<A[]> | null => {
   const entry = memory[emit.provenance];
   const awaitingValueCount = entry?.awaitingValueCount;
   const batch = entry?.batch ?? [];
@@ -101,19 +117,29 @@ const batchAsync = <A>(emit: InstAsync<A>, memory: Record<symbol, ProvenanceStat
     const fullBatch = [...batch, ...childVals];
     return async({ provenance: emit.provenance, child: val(fullBatch) });
   }
-  return async({ provenance: emit.provenance, child: batchOrGroup(emit.child, memory) });
+  return async({
+    provenance: emit.provenance,
+    child: batchOrGroup(emit.child, memory),
+  });
 };
 
-const batchOrGroup = <A>(emit: InstEmit<A>, memory: Record<symbol, ProvenanceState<A>>): InstEmit<A[]> | null => {
-  return emit.type === "init" ? groupInitSiblings(emit, memory) : batchAsync(emit, memory);
+const batchOrGroup = <A>(
+  emit: InstEmit<A>,
+  memory: Record<symbol, ProvenanceState<A>>,
+): InstEmit<A[]> | null => {
+  return emit.type === "init"
+    ? groupInitSiblings(emit, memory)
+    : batchAsync(emit, memory);
 };
 
 const updateMemoryFromEmit = <A>(
   emit: InstEmit<A>,
-  oldMemory: Record<symbol, ProvenanceState<A>>
+  oldMemory: Record<symbol, ProvenanceState<A>>,
 ): Record<symbol, ProvenanceState<A>> => {
   if (emit.type === "init") {
-    const newMemory = updateMemory(oldMemory, emit.provenance, { totalNum: "++" });
+    const newMemory = updateMemory(oldMemory, emit.provenance, {
+      totalNum: "++",
+    });
     const withChildrensState = emit.children.reduce((acc, child) => {
       if (child.type === "close") {
         return updateMemory(acc, emit.provenance, { totalNum: "--" });
@@ -134,20 +160,30 @@ const updateMemoryFromEmit = <A>(
     return updateMemory(oldMemory, emit.provenance, { totalNum: "--" });
   }
   if (emit.child?.type === "value") {
-    return updateMemory(oldMemory, emit.provenance, { awaitingValueCount: "--", batchAppend: emit.child.value });
+    return updateMemory(oldMemory, emit.provenance, {
+      awaitingValueCount: "--",
+      batchAppend: emit.child.value,
+    });
   }
   if (emit.child == null) {
-    return updateMemory(oldMemory, emit.provenance, { awaitingValueCount: "--" });
+    return updateMemory(oldMemory, emit.provenance, {
+      awaitingValueCount: "--",
+    });
   }
-  return updateMemoryFromEmit(emit.child, updateMemory(oldMemory, emit.provenance, { awaitingValueCount: "--" }));
+  return updateMemoryFromEmit(
+    emit.child,
+    updateMemory(oldMemory, emit.provenance, { awaitingValueCount: "--" }),
+  );
 };
 
-export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]> => {
+export const batchSimultaneous = <A>(
+  inst: Instantaneous<A>,
+): Instantaneous<A[]> => {
   return inst.pipe(
     r.scan(
       (
         { memory },
-        currentEmit
+        currentEmit,
       ): {
         emit: InstEmit<A[]> | null;
         memory: Record<symbol, ProvenanceState<A>>;
@@ -162,11 +198,11 @@ export const batchSimultaneous = <A>(inst: Instantaneous<A>): Instantaneous<A[]>
       { emit: null, memory: {} } as {
         emit: InstEmit<A[]> | null;
         memory: Record<symbol, ProvenanceState<A>>;
-      }
+      },
     ),
     r.mergeMap(({ emit }) => {
       return emit == null ? r.EMPTY : r.of(emit);
-    })
+    }),
   );
 };
 

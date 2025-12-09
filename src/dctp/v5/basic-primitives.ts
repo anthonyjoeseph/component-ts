@@ -20,14 +20,16 @@ import {
 
 export const EMPTY = r.defer(() => of());
 
-export const of = <As extends unknown[]>(...a: As): Instantaneous<As[number]> => {
+export const of = <As extends unknown[]>(
+  ...a: As
+): Instantaneous<As[number]> => {
   const provenance = uuid() as unknown as symbol;
 
   return r.of(
     init<As[number]>({
       provenance,
       children: [...a.map(val), close],
-    })
+    }),
   );
 };
 
@@ -45,7 +47,7 @@ export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {
         r.startWith(init),
         r.finalize(() => {
           subscription?.unsubscribe();
-        })
+        }),
       );
     }
     return r.merge(
@@ -69,7 +71,7 @@ export const share = <A>(inst: Instantaneous<A>): Instantaneous<A> => {
           isSubscribed = true;
         }
         return r.EMPTY;
-      })
+      }),
     );
   });
 };
@@ -80,7 +82,9 @@ export const map =
     return inst.pipe(r.map((a) => mapPrimitive(a, fn) as InstEmit<B>));
   };
 
-export const accumulate = <A>(initial: A): ((val: Instantaneous<(a: A) => A>) => Instantaneous<A>) => {
+export const accumulate = <A>(
+  initial: A,
+): ((val: Instantaneous<(a: A) => A>) => Instantaneous<A>) => {
   let value = initial;
   return map((fn) => {
     const newValue = fn(value);
@@ -99,22 +103,25 @@ export const take =
         r.tap((a) => {
           if (isInit(a)) {
             provenance = a.provenance;
-            numSyncEmissions = a.children.filter((c) => c.type === "value").length;
+            numSyncEmissions = a.children.filter(
+              (c) => c.type === "value",
+            ).length;
           }
         }),
-        r.take(takeNum + 1 - numSyncEmissions!) // add one for the 'init' emission
+        r.take(takeNum + 1 - numSyncEmissions!), // add one for the 'init' emission
       ),
       r.of({
         type: "async",
         provenance: provenance!,
         child: { type: "close" } satisfies InstClose,
-      } satisfies InstAsync<A>)
+      } satisfies InstAsync<A>),
     );
   };
 
-export const fromInstantaneous: <A>(obs: Instantaneous<A>) => r.Observable<A> = r.pipe(
-  r.mergeMap((emit) => {
-    const allVals = values(emit);
-    return r.of(...allVals);
-  })
-);
+export const fromInstantaneous: <A>(obs: Instantaneous<A>) => r.Observable<A> =
+  r.pipe(
+    r.mergeMap((emit) => {
+      const allVals = values(emit);
+      return r.of(...allVals);
+    }),
+  );

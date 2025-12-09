@@ -28,7 +28,7 @@ export const scan =
       map((a): ((b: B) => B) => {
         return (b: B): B => fn(b, a);
       }),
-      accumulate(initial)
+      accumulate(initial),
     );
   };
 
@@ -40,7 +40,7 @@ export const pairwise =
       map((newOne): ((a: [A, A]) => [A, A]) => {
         return ([, old]) => [old, newOne];
       }),
-      accumulate([initial, initial])
+      accumulate([initial, initial]),
     );
   };
 
@@ -49,7 +49,7 @@ export const filter =
   (ob: Instantaneous<A>): Instantaneous<B> => {
     return pipeWith(
       ob,
-      switchMap((a) => (pred(a) ? of(a) : r.EMPTY))
+      switchMap((a) => (pred(a) ? of(a) : r.EMPTY)),
     );
   };
 
@@ -58,8 +58,10 @@ export const bufferCount =
   (ob: Instantaneous<A>): Instantaneous<A[]> => {
     return pipeWith(
       ob,
-      scan([] as A[], (acc, cur) => (acc.length === count ? [cur] : [...acc, cur])),
-      filter((arr): arr is A[] => arr.length === count)
+      scan([] as A[], (acc, cur) =>
+        acc.length === count ? [cur] : [...acc, cur],
+      ),
+      filter((arr): arr is A[] => arr.length === count),
     );
   };
 
@@ -70,22 +72,25 @@ export const buffer =
       merge<{ type: "emit"; value: A } | { type: "close" }>(
         pipeWith(
           ob,
-          map((value) => ({ type: "emit" as const, value }))
+          map((value) => ({ type: "emit" as const, value })),
         ),
         pipeWith(
           until,
-          map(() => ({ type: "close" as const }))
-        )
+          map(() => ({ type: "close" as const })),
+        ),
       ),
-      scan({ type: "closed" } as { type: "closed" } | { type: "open"; batch: A[] }, (acc, cur) =>
-        cur.type === "close"
-          ? { type: "closed" as const }
-          : {
-              type: "open" as const,
-              batch: acc.type === "open" ? [...acc.batch, cur.value] : [cur.value],
-            }
+      scan(
+        { type: "closed" } as { type: "closed" } | { type: "open"; batch: A[] },
+        (acc, cur) =>
+          cur.type === "close"
+            ? { type: "closed" as const }
+            : {
+                type: "open" as const,
+                batch:
+                  acc.type === "open" ? [...acc.batch, cur.value] : [cur.value],
+              },
       ),
       filter((e): e is { type: "open"; batch: A[] } => e.type === "open"),
-      map(({ batch }) => batch)
+      map(({ batch }) => batch),
     );
   };
