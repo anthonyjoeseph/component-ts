@@ -17,8 +17,10 @@ const applyToKeys =
     [K in keyof R]: Apply<H, R[K]>;
   } => {
     return Object.fromEntries(
-      Object.entries(r).map(([key, val]) => [key, fn(val as any)]),
-    ) as any;
+      Object.entries(r).map(([key, val]) => [key, fn(val as never)]),
+    ) as {
+      [K in keyof R]: Apply<H, R[K]>;
+    };
   };
 
 type Fn1<A> = { feedMe: A };
