@@ -1,19 +1,39 @@
-import { FC, type ReactNode, createElement, useEffect, useRef } from "react";
-import { type Observable, Subject, filter, map, EMPTY, isObservable } from "rxjs";
+import {
+  FC,
+  Fragment,
+  type ReactNode,
+  createElement,
+  useEffect,
+  useRef,
+} from "react";
+import {
+  type Observable,
+  Subject,
+  filter,
+  map,
+  EMPTY,
+  isObservable,
+  scan,
+} from "rxjs";
 import { useObservableState } from "observable-hooks";
 import pick from "lodash/pick";
 import { ShallowAnd } from "./util";
 
-export type RxComponent<Input extends Record<string, unknown>, Events extends Record<string, unknown>> = [
-  Events,
-  InputFn<Input>,
-];
+export type RxComponent<
+  Input extends Record<string, unknown>,
+  Events extends Record<string, unknown>,
+> = [Events, InputFn<Input>];
 
-export type ComponentInput<C extends RxComponent<any, any>> = Parameters<C[1]["getNode"]>[0];
+export type ComponentInput<C extends RxComponent<any, any>> = Parameters<
+  C[1]["getNode"]
+>[0];
 
 export type ComponentEvents<C extends RxComponent<any, any>> = C[0];
 
-export type InputFn<Input> = { inputKeys: (keyof Input)[]; getNode: (input: Input) => ReactNode };
+export type InputFn<Input> = {
+  inputKeys: (keyof Input)[];
+  getNode: (input: Input) => ReactNode;
+};
 
 export const contramapInputs = <
   OldInput extends Record<string, unknown>,
@@ -23,7 +43,7 @@ export const contramapInputs = <
 >(
   component: RxComponent<OldInput, Events>,
   newInputKeys: NewInputKeys,
-  fn: (inputs: NewInput, oldInputKeys: (keyof OldInput)[]) => OldInput
+  fn: (inputs: NewInput, oldInputKeys: (keyof OldInput)[]) => OldInput,
 ): RxComponent<NewInput, Events> => {
   const [events, { getNode, inputKeys: oldInputKeys }] = component;
   return [
@@ -43,13 +63,16 @@ export const mapEvents = <
   NewEvents extends Record<string, unknown>,
 >(
   component: RxComponent<Input, OldEvents>,
-  fn: (events: OldEvents, inputKeys: (keyof Input)[]) => NewEvents
+  fn: (events: OldEvents, inputKeys: (keyof Input)[]) => NewEvents,
 ): RxComponent<Input, NewEvents> => {
   const [events, inputFn] = component;
   return [fn(events, inputFn.inputKeys), inputFn];
 };
 
-export type GetInputs<Tag extends keyof JSX.IntrinsicElements, Keys extends Array<keyof JSX.IntrinsicElements[Tag]>> = {
+export type GetInputs<
+  Tag extends keyof JSX.IntrinsicElements,
+  Keys extends Array<keyof JSX.IntrinsicElements[Tag]>,
+> = {
   [K in Keys[number]]: Observable<JSX.IntrinsicElements[Tag][K]>;
 };
 
@@ -57,7 +80,9 @@ export type GetOutputs<
   Tag extends keyof JSX.IntrinsicElements,
   Keys extends Array<keyof JSX.IntrinsicElements[Tag]>,
 > = {
-  [K in Keys[number]]: NonNullable<JSX.IntrinsicElements[Tag][K]> extends React.ReactEventHandler<any>
+  [K in Keys[number]]: NonNullable<
+    JSX.IntrinsicElements[Tag][K]
+  > extends React.ReactEventHandler<any>
     ? Observable<Parameters<NonNullable<JSX.IntrinsicElements[Tag][K]>>[0]>
     : K extends "ref"
       ? () => JSX.IntrinsicElements[Tag]
@@ -75,9 +100,12 @@ export type ComponentFn = {
     dynamicInputs: InputKeys,
     outputs: OutputKeys,
     staticInputs: JSX.IntrinsicElements[Tag],
-    child: Child
+    child: Child,
   ): RxComponent<
-    ShallowAnd<{ [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> }, ComponentInput<Child>>,
+    ShallowAnd<
+      { [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> },
+      ComponentInput<Child>
+    >,
     ShallowAnd<GetOutputs<Tag, OutputKeys>, ComponentEvents<Child>>
   >;
 
@@ -90,9 +118,12 @@ export type ComponentFn = {
     tag: Tag,
     dynamicInputs: InputKeys,
     outputs: OutputKeys,
-    child: Child
+    child: Child,
   ): RxComponent<
-    ShallowAnd<{ [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> }, ComponentInput<Child>>,
+    ShallowAnd<
+      { [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> },
+      ComponentInput<Child>
+    >,
     ShallowAnd<GetOutputs<Tag, OutputKeys>, ComponentEvents<Child>>
   >;
 
@@ -104,9 +135,12 @@ export type ComponentFn = {
     tag: Tag,
     dynamicInputs: InputKeys,
     staticInputs: JSX.IntrinsicElements[Tag],
-    child: Child
+    child: Child,
   ): RxComponent<
-    ShallowAnd<{ [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> }, ComponentInput<Child>>,
+    ShallowAnd<
+      { [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> },
+      ComponentInput<Child>
+    >,
     ComponentEvents<Child>
   >;
 
@@ -117,21 +151,30 @@ export type ComponentFn = {
   >(
     tag: Tag,
     dynamicInputs: InputKeys,
-    child: Child
+    child: Child,
   ): RxComponent<
-    ShallowAnd<{ [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> }, ComponentInput<Child>>,
+    ShallowAnd<
+      { [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> },
+      ComponentInput<Child>
+    >,
     ComponentEvents<Child>
   >;
 
-  <Tag extends keyof JSX.IntrinsicElements, Child extends RxComponent<any, any>>(
+  <
+    Tag extends keyof JSX.IntrinsicElements,
+    Child extends RxComponent<any, any>,
+  >(
     tag: Tag,
     staticInputs: JSX.IntrinsicElements[Tag],
-    child: Child
+    child: Child,
   ): RxComponent<ComponentInput<Child>, ComponentEvents<Child>>;
 
-  <Tag extends keyof JSX.IntrinsicElements, Child extends RxComponent<any, any>>(
+  <
+    Tag extends keyof JSX.IntrinsicElements,
+    Child extends RxComponent<any, any>,
+  >(
     tag: Tag,
-    child: Child
+    child: Child,
   ): RxComponent<ComponentInput<Child>, ComponentEvents<Child>>;
 
   <
@@ -142,46 +185,73 @@ export type ComponentFn = {
     tag: Tag,
     dynamicInputs: InputKeys,
     outputs: OutputKeys,
-    staticInputs?: JSX.IntrinsicElements[Tag]
+    staticInputs?: JSX.IntrinsicElements[Tag],
   ): RxComponent<
     { [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> },
     GetOutputs<Tag, OutputKeys>
   >;
 
-  <Tag extends keyof JSX.IntrinsicElements, InputKeys extends Array<keyof JSX.IntrinsicElements[Tag]>>(
+  <
+    Tag extends keyof JSX.IntrinsicElements,
+    InputKeys extends Array<keyof JSX.IntrinsicElements[Tag]>,
+  >(
     tag: Tag,
     dynamicInputs: InputKeys,
-    staticInputs?: JSX.IntrinsicElements[Tag]
-  ): RxComponent<{ [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> }, {}>;
+    staticInputs?: JSX.IntrinsicElements[Tag],
+  ): RxComponent<
+    { [K in InputKeys[number]]-?: Observable<JSX.IntrinsicElements[Tag][K]> },
+    {}
+  >;
 
-  <Tag extends keyof JSX.IntrinsicElements>(tag: Tag, staticInputs?: JSX.IntrinsicElements[Tag]): RxComponent<{}, {}>;
+  <Tag extends keyof JSX.IntrinsicElements>(
+    tag: Tag,
+    staticInputs?: JSX.IntrinsicElements[Tag],
+  ): RxComponent<{}, {}>;
 };
 
 const f = <form action="eee"></form>;
 
 export const component: ComponentFn = (
   tag: string,
-  secondArg?: string[] | Record<string, unknown> | [Record<string, unknown>, InputFn<unknown>],
-  thirdArg?: string[] | Record<string, unknown> | [Record<string, unknown>, InputFn<unknown>],
-  fourthArg?: Record<string, unknown> | [Record<string, unknown>, InputFn<unknown>],
-  fifthArg?: [Record<string, unknown>, InputFn<unknown>]
+  secondArg?:
+    | string[]
+    | Record<string, unknown>
+    | [Record<string, unknown>, InputFn<unknown>],
+  thirdArg?:
+    | string[]
+    | Record<string, unknown>
+    | [Record<string, unknown>, InputFn<unknown>],
+  fourthArg?:
+    | Record<string, unknown>
+    | [Record<string, unknown>, InputFn<unknown>],
+  fifthArg?: [Record<string, unknown>, InputFn<unknown>],
 ) => {
   const typeOfArg = (a: unknown): "KeyArray" | "Component" | "StaticInputs" =>
-    Array.isArray(a) ? (typeof a[0] === "string" ? "KeyArray" : "Component") : "StaticInputs";
-  const childComponent = [fifthArg, fourthArg, thirdArg, secondArg].find((arg) => typeOfArg(arg) === "Component") as
-    | [unknown, InputFn<unknown>]
-    | undefined;
-  const staticInputs = [fourthArg, thirdArg, secondArg].find((arg) => typeOfArg(arg) === "StaticInputs") as
-    | Record<string, unknown>
-    | undefined;
-  const outputKeys = (typeOfArg(thirdArg) === "KeyArray" ? thirdArg : []) as string[];
-  const dynamicInputKeys = (typeOfArg(secondArg) === "KeyArray" ? secondArg : []) as string[];
+    Array.isArray(a)
+      ? typeof a[0] === "string"
+        ? "KeyArray"
+        : "Component"
+      : "StaticInputs";
+  const childComponent = [fifthArg, fourthArg, thirdArg, secondArg].find(
+    (arg) => typeOfArg(arg) === "Component",
+  ) as [unknown, InputFn<unknown>] | undefined;
+  const staticInputs = [fourthArg, thirdArg, secondArg].find(
+    (arg) => typeOfArg(arg) === "StaticInputs",
+  ) as Record<string, unknown> | undefined;
+  const outputKeys = (
+    typeOfArg(thirdArg) === "KeyArray" ? thirdArg : []
+  ) as string[];
+  const dynamicInputKeys = (
+    typeOfArg(secondArg) === "KeyArray" ? secondArg : []
+  ) as string[];
 
   const childEvents = childComponent?.[0];
   const childInputkeys = childComponent?.[1]?.inputKeys ?? [];
   const getChildNode = childComponent?.[1]?.getNode;
 
-  const eventHandler = outputKeys.some((o) => o !== "ref") ? new Subject<[string, unknown]>() : undefined;
+  const eventHandler = outputKeys.some((o) => o !== "ref")
+    ? new Subject<[string, unknown]>()
+    : undefined;
   let outerRef: React.RefObject<HTMLInputElement> | undefined;
 
   const events = Object.fromEntries(
@@ -192,10 +262,10 @@ export const component: ComponentFn = (
           outputKey as string,
           eventHandler?.pipe(
             filter(([key]) => key === outputKey),
-            map(([, value]) => value)
+            map(([, value]) => value),
           ) ?? EMPTY,
         ];
-      })
+      }),
   );
 
   const eventsPlusRef = Array.isArray(secondArg)
@@ -214,8 +284,14 @@ export const component: ComponentFn = (
     const dynamicInputs = pick(rawDynamicInputs, dynamicInputKeys);
     // do it inside a function element to make sure the hooks work
     // 'children' is a prop so that our children() fn can pass them in for free
-    const Element: FC = ({ children: propChildren }: { children?: ReactNode }) => {
-      outerRef = outputKeys.includes("ref") ? useRef<HTMLInputElement>(null) : undefined;
+    const Element: FC = ({
+      children: propChildren,
+    }: {
+      children?: ReactNode;
+    }) => {
+      outerRef = outputKeys.includes("ref")
+        ? useRef<HTMLInputElement>(null)
+        : undefined;
       useEffect(() => {
         // on un-mount
         return () => {
@@ -230,16 +306,22 @@ export const component: ComponentFn = (
       }
       for (const [propName, propVal] of Object.entries(dynamicInputs ?? {})) {
         if (isObservable(propVal as Observable<unknown>)) {
-          curatedProps[propName] = useObservableState(propVal as Observable<unknown>, (staticInputs ?? {})[propName]);
+          curatedProps[propName] = useObservableState(
+            propVal as Observable<unknown>,
+            (staticInputs ?? {})[propName],
+          );
         }
       }
       for (const outputKey of outputKeys) {
         if (outputKey !== "ref") {
-          curatedProps[outputKey as string] = (event: unknown) => eventHandler?.next([outputKey as string, event]);
+          curatedProps[outputKey as string] = (event: unknown) =>
+            eventHandler?.next([outputKey as string, event]);
         }
       }
 
-      const children = getChildNode ? getChildNode(rawDynamicInputs) : (curatedProps.children ?? propChildren);
+      const children = getChildNode
+        ? getChildNode(rawDynamicInputs)
+        : (curatedProps.children ?? propChildren);
 
       const returnElm = createElement(tag, {
         ...curatedProps,

@@ -19,6 +19,10 @@ export type NonBlockingGenerator<A> = Generator<NonBlockingEmission<A>, never, n
  * They prefer `setImmediate` to `MessageChannel`, and have determined that `requestIdleCallback` isn't aggressive enough.
  * Also, setInterval clamps at roughly 4ms.
  * 
+ * https://github.com/facebook/react/blob/3cb2c42013eda273ac449126ab9fcc115a09d39d/packages/scheduler/src/forks/Scheduler.js#L517
+ * 
+ * Alternately, we might try `queueMicrotask`: https://github.com/facebook/react/blob/3cb2c42013eda273ac449126ab9fcc115a09d39d/packages/react/src/ReactAct.js#L361
+ * 
  * 
  * We use a synchronous generator as a simple-ish interface
  * 

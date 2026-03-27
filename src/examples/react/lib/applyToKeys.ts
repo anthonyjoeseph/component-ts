@@ -23,10 +23,8 @@ const applyToKeys =
     };
   };
 
-type Fn1<A> = { feedMe: A };
-interface Fn1HKT {
-  param: unknown;
-  result: Fn1<this["param"]>;
+interface Fn1HKT extends HKT {
+  result: this["param"] extends infer A ? { feedMe: A } : never;
 }
 const result = applyToKeys<Fn1HKT>()(
   {
@@ -36,9 +34,7 @@ const result = applyToKeys<Fn1HKT>()(
   (a) => ({ feedMe: a }),
 );
 
-type Fn2<A> = A extends { feedMe: unknown } ? A["feedMe"] : never;
-interface Fn2HKT {
-  param: unknown;
-  result: Fn2<this["param"]>;
+interface Fn2HKT extends HKT {
+  result: this["param"] extends { feedMe: infer A } ? A : never;
 }
 const result2 = applyToKeys<Fn2HKT>()(result, (a) => a.feedMe);
