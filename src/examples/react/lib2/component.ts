@@ -25,6 +25,10 @@ import { ShallowUnionToIntersection } from "../lib/util";
  *
  * Problem: can't iterate over a proxy, reduces flexibility
  * events often don't depend on attributes - this is usually unnecessary
+ * 
+ * SOLUTION! - build a eslint plugin to ensure that closure-wrapped 'precog'
+ * observable values are always referenced inside a `defer()`
+ * (ideally this is can be a solution to a more general problem - not sure though...)
  */
 
 /**
