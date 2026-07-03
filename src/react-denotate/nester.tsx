@@ -1,15 +1,9 @@
 import {
-  Component,
   FunctionComponent,
-  ReactNode,
   ReactElement,
   ComponentProps,
   JSXElementConstructor,
 } from "react";
-
-export type Flatten<A> = {
-  [K in keyof A]: A[K];
-};
 
 export type UnionToIntersection<T> = (
   T extends any ? (x: T) => any : never
@@ -28,15 +22,22 @@ export const element = <Children extends JSXElementConstructor<any>[]>(
 
 export const component = <
   Parent extends JSXElementConstructor<any>,
+  StaticProps extends Partial<ComponentProps<Parent>>,
   Children extends JSXElementConstructor<any>[],
 >(
   parent: Parent,
+  staticProps: StaticProps,
   children: Children,
 ): FunctionComponent<
-  ComponentProps<Parent> &
-    UnionToIntersection<
-      Children[number] extends any ? ComponentProps<Children[number]> : never
-    >
+  {
+    [K in keyof ComponentProps<Parent> as K extends keyof StaticProps
+      ? undefined extends StaticProps[K]
+        ? K
+        : never
+      : K]: ComponentProps<Parent>[K];
+  } & UnionToIntersection<
+    Children[number] extends any ? ComponentProps<Children[number]> : never
+  >
 > => null;
 
 export const name = <
@@ -47,18 +48,59 @@ export const name = <
   parent: Parent,
 ): FunctionComponent<{ [K in Name]: ComponentProps<Parent> }> => null;
 
+export const array = <Parent extends JSXElementConstructor<any>>(
+  parent: Parent,
+): FunctionComponent<{ array: ComponentProps<Parent>[] }> => null;
+
+export const discriminatedUnion = <
+  Discriminator extends string,
+  Items extends Record<string, JSXElementConstructor<any>>,
+>(
+  discriminator: Discriminator,
+  options: Items,
+): FunctionComponent<{
+  union: {
+    [K in keyof Items]: {
+      [D in
+        | Discriminator
+        | keyof ComponentProps<Items[K]>]: D extends Discriminator
+        ? K
+        : ComponentProps<Items[K]>[D];
+    };
+  }[keyof Items];
+}> => null;
+
+export const optional = <Parent extends JSXElementConstructor<any>>(
+  parent: Parent,
+): FunctionComponent<{ optional?: ComponentProps<Parent> | undefined }> => null;
+
 export const e = element;
 export const c = component;
 export const n = name;
+export const a = array;
+export const u = discriminatedUnion;
+export const o = optional;
 
-declare const TestCompA: FunctionComponent<{ a: number }>;
+declare const TestCompA: FunctionComponent<{ a?: number }>;
 declare const TestCompB: FunctionComponent<{ b: string }>;
 declare const TestCompC: FunctionComponent<{ c: boolean }>;
 
-const testElement = element(<a />, [TestCompA, TestCompB]);
+const TestElement = element(<a />, [TestCompA, TestCompB]);
 
-const testComponent = component(TestCompA, [TestCompB, TestCompC]);
+const TestComponent = component(TestCompA, { a: undefined }, [
+  TestCompB,
+  TestCompC,
+]);
 
-const testName = name("theTest", TestCompA);
+const TestName = name("theTest", TestCompA);
 
-const testAll = e(<div />, [n("a", TestCompA), TestCompB]);
+const TestArray = array(TestCompA);
+
+const TestDisc = discriminatedUnion("type", {
+  thing1: TestCompA,
+  thing2: TestCompB,
+});
+
+const TestOpt = optional(TestCompA);
+
+const TestAll = e(<div />, [n("a", TestCompA), TestCompB]);
